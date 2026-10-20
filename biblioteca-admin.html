@@ -1214,6 +1214,47 @@ async function darDeBaja(u, borrarObras) {
 }
 const tablaClaves = l => `<div class="tabla-wrap" style="max-height:40vh"><table><thead><tr><th>Alumno</th><th>Grupo</th><th>Usuario</th><th>Clave</th></tr></thead><tbody>${l.map(u => `<tr><td>${esc(u.nombre)}</td><td>${esc(u.grupo)}</td><td><code>${esc(u.alias)}</code></td><td><code class="cl">${claveVisible(u.clave)}</code></td></tr>`).join('')}</tbody></table></div>`;
 
+
+/* Crea cuentas en lote (alta de un grupo e importación de archivo). Seguro de repetir: salta a quien ya existe. */
+async function crearAlumnado(items, tituloImpresion, { resumen = false, alTerminar = () => {} } = {}) {
+  const ocup = new Set(E.usuarios.map(u => u.alias)), hechos = [], fallos = [];
+  items.forEach(x => { if (x.alias) ocup.add(x.alias); });
+  const aviso = document.createElement('div'); aviso.className = 'tostada'; aviso.style.position = 'fixed'; document.body.appendChild(aviso);
+  for (let i = 0; i < items.length; i++) {
+    aviso.textContent = `Creando ${i + 1} de ${items.length}…`;
+    const { nombre, clave, alias: aliasDado, grupo } = items[i];
+    const ya = E.usuarios.find(u => normal(u.nombre) === normal(nombre) && u.grupo === grupo) || E.usuarios.find(u => aliasDado && u.alias === aliasDado);
+    if (ya) { fallos.push(nombre + ': ya estaba dado de alta (' + ya.alias + ', ' + ya.grupo + ')'); continue; }
+    if (clave && clave.length < 6) { fallos.push(nombre + ': la clave necesita al menos 6 caracteres'); continue; }
+    for (let intento = 0; intento < 4; intento++) {
+      try { hechos.push(await altaAlumno({ nombre, grupo, alias: aliasDado || aliasLibre(nombre, ocup), clave: clave || claveNueva() })); break; }
+      catch (e) {
+        if (/TOO_MANY|QUOTA/i.test(String(e.message) + String(e.cod)) && intento < 3) { aviso.textContent = 'Firebase pide esperar un momento…'; await new Promise(r => setTimeout(r, 6000)); continue; }
+        fallos.push(nombre + ': ' + mensajeError(e)); break;
+      }
+    }
+  }
+  aviso.remove(); alTerminar();
+  const porGrupo = {}; hechos.forEach(u => porGrupo[u.grupo] = (porGrupo[u.grupo] || 0) + 1);
+  const cuerpo = resumen && hechos.length ? `<ul style="line-height:1.7;padding-left:20px">${Object.entries(porGrupo).sort().map(([g, n]) => `<li><b>${esc(g)}</b>: ${n}</li>`).join('')}</ul>` : (hechos.length ? tablaClaves(hechos) : '');
+  const r = await modal({ titulo: hechos.length + (hechos.length === 1 ? ' alumno creado' : ' alumnos creados'), icono: '🔑', ancho: true, html: cuerpo + (fallos.length ? `<p class="err" style="margin-top:10px">${fallos.map(esc).join('<br>')}</p>` : ''), botones: [{ t: 'Cerrar', v: false, c: 'sec' }].concat(hechos.length ? [{ t: '🖨️ Imprimir claves', v: true }] : []) });
+  if (r) imprimirClaves(hechos, tituloImpresion);
+  return hechos;
+}
+/* Lee un archivo de texto: bloques «===== 4ºA =====» seguidos de líneas «Nombre» o «Nombre;clave;usuario» */
+function leerArchivoAlumnado(texto) {
+  const out = []; let grupo = '';
+  texto.split(/\r?\n/).forEach(l => {
+    l = l.trim(); if (!l) return;
+    const h = /^=+\s*([1-6]\s*[º°ª]?\s*[A-Za-zÁ-ú]+)/.exec(l);
+    if (h) { grupo = h[1].replace(/\s+/g, '').replace(/[°ª]/, 'º').toUpperCase(); if (!/º/.test(grupo)) grupo = grupo.charAt(0) + 'º' + grupo.slice(1); return; }
+    if (!grupo) return;
+    const [n, c, u] = l.split(';');
+    out.push({ nombre: n.trim(), clave: (c || '').trim().toLowerCase(), alias: normal((u || '').trim()).replace(/[^a-z0-9]/g, ''), grupo });
+  });
+  return out;
+}
+
 VISTAS.alumnado = async (main, p) => {
   main.innerHTML = cargando('Cargando alumnado…');
   try { await cargarUsuarios(p.recargar); } catch (e) { main.innerHTML = `<div class="vacio"><p>${mensajeError(e)}</p></div>`; return; }
@@ -1221,7 +1262,7 @@ VISTAS.alumnado = async (main, p) => {
   main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:14px">Alumnado</h1>
     <nav class="tabs"><button data-p="activos" class="on">Activos</button><button data-p="bajas">De baja</button></nav>
     <div class="fila" style="margin-bottom:12px;flex-wrap:wrap">
-      <button class="btn amar" id="a-nuevo">➕ Nuevo alumno</button><button class="btn sec" id="a-grupo">📋 Alta de un grupo</button><button class="btn sec" id="a-subir">⬆️ Subir de curso</button>
+      <button class="btn amar" id="a-nuevo">➕ Nuevo alumno</button><button class="btn sec" id="a-import">📥 Importar archivo</button><button class="btn sec" id="a-grupo">📋 Alta de un grupo</button><button class="btn sec" id="a-subir">⬆️ Subir de curso</button>
       <button class="btn sec" id="a-imp">🖨️ Imprimir claves</button><button class="btn sec" id="a-csv">⬇️ CSV</button><button class="btn sec" id="a-rec" title="Volver a leer la lista">↻</button></div>
     <div class="fila" style="margin-bottom:10px;flex-wrap:wrap"><select id="a-g" style="max-width:240px"></select>
       <label class="busca" style="flex:1;min-width:200px"><span class="sr">Buscar</span><input type="search" id="a-q" placeholder="Buscar alumno"></label>
@@ -1292,20 +1333,21 @@ VISTAS.alumnado = async (main, p) => {
         antes: v => { if (!/^[1-6]/.test($('#g-gru', v).value.trim())) { tostada('El grupo debe empezar por el curso: 3ºA…', 'mal'); return false; } if (!$('#g-lis', v).value.trim()) { tostada('Escribe al menos un nombre', 'mal'); return false; } } }]
     });
     if (!d) return;
-    const ocup = new Set(E.usuarios.map(u => u.alias)), hechos = [], fallos = [];
-    d.nombres.forEach(x => { if (x.alias) ocup.add(x.alias); });
-    const barraProg = $('#principal'); const aviso = document.createElement('div'); aviso.className = 'tostada'; aviso.style.position = 'fixed'; document.body.appendChild(aviso);
-    for (let i = 0; i < d.nombres.length; i++) {
-      aviso.textContent = `Creando ${i + 1} de ${d.nombres.length}…`;
-      const { nombre, clave, alias: aliasDado } = d.nombres[i];
-      const ya = E.usuarios.find(u => normal(u.nombre) === normal(nombre));
-      if (ya) { fallos.push(nombre + ': ya estaba dado de alta (' + ya.alias + ', ' + ya.grupo + ')'); continue; }
-      if (clave && clave.length < 6) { fallos.push(nombre + ': la clave necesita al menos 6 caracteres'); continue; }
-      try { hechos.push(await altaAlumno({ nombre, grupo: d.grupo, alias: aliasDado || aliasLibre(nombre, ocup), clave: clave || claveNueva() })); } catch (e) { fallos.push(nombre + ': ' + mensajeError(e)); }
-    }
-    aviso.remove(); S.grupo = d.grupo; refrescar();
-    const r = await modal({ titulo: hechos.length + (hechos.length === 1 ? ' alumno creado' : ' alumnos creados'), icono: '🔑', ancho: true, html: (hechos.length ? tablaClaves(hechos) : '') + (fallos.length ? `<p class="err" style="margin-top:10px">${fallos.map(esc).join('<br>')}</p>` : ''), botones: [{ t: 'Cerrar', v: false, c: 'sec' }, ...(hechos.length ? [{ t: '🖨️ Imprimir tarjetas', v: true }] : [])] });
-    if (r) imprimirClaves(hechos, 'Usuarios y claves · ' + d.grupo);
+    await crearAlumnado(d.nombres.map(x => ({ ...x, grupo: d.grupo })), 'Usuarios y claves · ' + d.grupo, { alTerminar: () => { S.grupo = d.grupo; refrescar(); } });
+  };
+  /* importar un archivo con varios grupos */
+  $('#a-import').onclick = () => {
+    const f = document.createElement('input'); f.type = 'file'; f.accept = '.txt,.csv,text/plain';
+    f.onchange = async () => {
+      if (!f.files[0]) return;
+      const lista = leerArchivoAlumnado(await f.files[0].text());
+      if (!lista.length) return avisar('Archivo vacío', 'No he encontrado alumnado. Cada grupo debe empezar con una línea como «===== 4ºA =====».', '📥');
+      const g = {}; lista.forEach(x => g[x.grupo] = (g[x.grupo] || 0) + 1);
+      const ok = await preguntar('¿Importar ' + lista.length + ' alumnos?', Object.entries(g).sort().map(([k, n]) => k + ': ' + n).join(' · ') + '. Quien ya esté dado de alta se salta. Puede tardar un par de minutos: no cierres la página.', 'Importar');
+      if (!ok) return;
+      await crearAlumnado(lista, 'Usuarios y claves', { resumen: true, alTerminar: refrescar });
+    };
+    f.click();
   };
   /* subir de curso */
   $('#a-subir').onclick = async () => {
