@@ -68,7 +68,7 @@ main{max-width:1100px;margin:0 auto;padding:18px 16px 80px}
 .campo{display:block;margin-bottom:14px}
 .campo>span{display:block;font-weight:600;margin-bottom:6px;font-size:.95rem}
 .campo small{color:var(--gris);font-weight:400}
-input[type=text],input[type=password],input[type=number],input[type=date],input[type=search],select,textarea{width:100%;border:2px solid var(--linea);background:var(--hoja);border-radius:12px;padding:12px 14px;min-height:50px;outline:none;transition:border-color .15s}
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],input[type=search],select,textarea{width:100%;border:2px solid var(--linea);background:var(--hoja);border-radius:12px;padding:12px 14px;min-height:50px;outline:none;transition:border-color .15s}
 input:focus,select:focus,textarea:focus{border-color:var(--pizarra)}
 textarea{resize:vertical;min-height:110px;line-height:1.5}
 .check{display:flex;gap:10px;align-items:center;cursor:pointer;user-select:none}
@@ -396,6 +396,8 @@ code.cl .cf{font-weight:900}
 code.cl .cg{display:inline-block;width:.7em}
 code.cl .cl-l{font-weight:400;letter-spacing:.12em}
 
+.o-sep{display:flex;align-items:center;gap:10px;margin:16px 0 12px;color:var(--gris);font-size:.9rem}.o-sep:before,.o-sep:after{content:'';flex:1;height:1px;background:var(--linea)}
+
 </style>
 </head>
 <body>
@@ -417,7 +419,11 @@ const FB = {
   apiKey: 'AIzaSyC1zofo3VKHEBFka7N6XuiiBu4q1d4Zh5I',
   proyecto: 'biblioteca-siurot',
   dominio: 'ajedrez-siurot.app',
-  admin: 'manuelvsanchez@gmail.com'
+  admin: 'manuelvsanchez@gmail.com',
+  /* Correos con permiso de administración. Para añadir a alguien: ponlo aquí Y en las reglas de Firestore (litAdmin). */
+  admins: ['manuelvsanchez@gmail.com'],
+  /* ID de cliente web de Google (Firebase → Authentication → Google → Configuración del SDK web). Vacío = sin botón de Google. */
+  googleClientId: ''
 };
 const URL_AUTH = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + FB.apiKey;
 const URL_TOKEN = 'https://securetoken.googleapis.com/v1/token?key=' + FB.apiKey;
@@ -550,6 +556,23 @@ async function entrar(usuario, clave, recordar) {
     else throw e;
   }
   E.ses = { uid: j.localId, email: j.email, tok: j.idToken, ref: j.refreshToken, exp: ahora() + (+j.expiresIn) * 1000, recordar };
+  guardarSesion();
+}
+
+/* Entrada con Google: Google Identity Services devuelve un ID token y Firebase lo canjea (sin SDK) */
+const URL_IDP = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=' + FB.apiKey;
+function cargarGoogle() {
+  return new Promise((ok, mal) => {
+    if (window.google && google.accounts && google.accounts.id) return ok();
+    const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
+    s.onload = ok; s.onerror = () => mal(new ErrorFB('No se ha podido cargar el acceso con Google. Revisa la conexión.', 'GOOGLE', 0));
+    document.head.appendChild(s);
+  });
+}
+async function entrarConGoogle(credencial) {
+  const origen = /^https?:/.test(location.origin) ? location.origin : 'http://localhost';
+  const j = await pedir(URL_IDP, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postBody: 'id_token=' + credencial + '&providerId=google.com', requestUri: origen, returnIdpCredential: true, returnSecureToken: true }) });
+  E.ses = { uid: j.localId, email: j.email, tok: j.idToken, ref: j.refreshToken, exp: ahora() + (+j.expiresIn) * 1000, recordar: true };
   guardarSesion();
 }
 
@@ -928,8 +951,17 @@ VISTAS.login = app => {
       <label class="campo"><span>Correo</span><input type="email" id="l-u" autocomplete="username" autocapitalize="none" spellcheck="false" value="${esc(ls.get('correo', FB.admin))}" required></label>
       <label class="campo"><span>Clave</span><div class="con-ojo"><input type="password" id="l-c" autocomplete="current-password" autocapitalize="none" spellcheck="false" required><button type="button" class="ojo" id="l-ojo" aria-label="Mostrar clave" aria-pressed="false" title="Mostrar u ocultar la clave">👁️</button></div></label>
       <button class="btn" id="l-b">Entrar</button>
+      ${FB.googleClientId ? '<div class="o-sep"><span>o</span></div><div id="g-btn" style="display:flex;justify-content:center;min-height:44px"></div>' : ''}
     </form></div></div>`;
   $('#l-c').focus();
+  if (FB.googleClientId) cargarGoogle().then(() => {
+    google.accounts.id.initialize({ client_id: FB.googleClientId, callback: async r => {
+      $('#l-err').innerHTML = '';
+      try { await entrarConGoogle(r.credential); await iniciar(); }
+      catch (e) { $('#l-err').innerHTML = `<div class="err">${e.cod === 'NO_ADMIN' ? 'Esta cuenta de Google no tiene permiso de administración.' : mensajeError(e)}</div>`; borrarSesion(); E.ses = null; }
+    } });
+    google.accounts.id.renderButton($('#g-btn'), { theme: 'outline', size: 'large', text: 'signin_with', locale: 'es', width: 280 });
+  }).catch(e => { $('#l-err').innerHTML = `<div class="err">${mensajeError(e)}</div>`; });
   $('#l-ojo').addEventListener('click', () => {
     const c = $('#l-c'), o = $('#l-ojo'), ver = c.type === 'password';
     c.type = ver ? 'text' : 'password'; o.setAttribute('aria-pressed', String(ver)); o.setAttribute('aria-label', ver ? 'Ocultar clave' : 'Mostrar clave'); o.textContent = ver ? '🙈' : '👁️'; c.focus();
@@ -943,7 +975,7 @@ VISTAS.login = app => {
   });
 };
 async function iniciar() {
-  if (E.ses.email !== FB.admin) { borrarSesion(); E.ses = null; throw new ErrorFB('Esta cuenta no es la del maestro administrador.', 'NO_ADMIN', 403); }
+  if (!FB.admins.includes((E.ses.email || '').toLowerCase())) { borrarSesion(); E.ses = null; throw new ErrorFB('Esta cuenta no es la del maestro administrador.', 'NO_ADMIN', 403); }
   E.yo = { uid: E.ses.uid, nombre: 'Maestro', admin: true };
   await cargarConfig(true);
   reiniciarNav('inicio');
