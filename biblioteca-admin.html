@@ -975,8 +975,10 @@ VISTAS.login = app => {
   });
 };
 async function iniciar() {
-  if (!FB.admins.includes((E.ses.email || '').toLowerCase())) { borrarSesion(); E.ses = null; throw new ErrorFB('Esta cuenta no es la del maestro administrador.', 'NO_ADMIN', 403); }
-  E.yo = { uid: E.ses.uid, nombre: 'Maestro', admin: true };
+  const correo = (E.ses.email || '').toLowerCase(); const dueno = FB.admins.includes(correo); let ok = dueno;
+  if (!ok) { try { ok = !!(await leerDoc('lit_admins/' + correo)); } catch (e) { ok = false; } }
+  if (!ok) { borrarSesion(); E.ses = null; throw new ErrorFB('Esta cuenta no tiene permiso de administración.', 'NO_ADMIN', 403); }
+  E.yo = { uid: E.ses.uid, nombre: 'Maestro', admin: true, dueno, correo };
   await cargarConfig(true);
   reiniciarNav('inicio');
 }
@@ -995,6 +997,7 @@ VISTAS.inicio = async main => {
     ['limpieza', '🧹', 'Limpieza', 'Borrar obras antiguas con poca valoración.'],
     ['ajustes', '⚙️', 'Ajustes', 'Escritura, valoraciones, reseñas y aviso.']
   ];
+  if (E.yo.dueno) T.push(['admins', '🔑', 'Administradores', 'Añade o quita profesorado con acceso a esta app.']);
   main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:18px">Administración</h1>
     <div class="panel">${T.map(([v, ic, t, d]) => `<button class="tarjeta ${v === 'resenas' && avis ? 'aviso-on' : ''}" data-ir="${v}"><span class="ic">${ic}</span><b>${t}</b><small>${d}</small></button>`).join('')}</div>`;
   $$('[data-ir]', main).forEach(b => b.addEventListener('click', () => ir(b.dataset.ir)));
@@ -1450,6 +1453,35 @@ VISTAS.limpieza = async main => {
 /* =========================================================================
    AJUSTES
    ========================================================================= */
+VISTAS.admins = async main => {
+  if (!E.yo.dueno) { main.innerHTML = '<div class="vacio"><p>Solo la persona propietaria puede gestionar administradores.</p></div>'; return; }
+  main.innerHTML = cargando();
+  let lista = (await consultar('lit_admins')).docs.sort((x, y) => (x.email || '').localeCompare(y.email || ''));
+  const pintar = () => {
+    main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:6px">Administradores</h1>
+      <p class="nota" style="margin-bottom:16px">Quien añadas aquí entra con su cuenta de Google (por ejemplo la educativa) y puede gestionar obras, alumnado, reseñas y limpieza. Solo tú puedes añadir o quitar administradores.</p>
+      <section class="seccion"><h2>Añadir</h2><form id="ad-f" class="fila"><input type="email" id="ad-e" placeholder="correo@dominio.es" autocapitalize="none" spellcheck="false" required><button class="btn" id="ad-b">Añadir</button></form></section>
+      <section class="seccion"><h2>Con acceso</h2><div class="tabla-wrap"><table><tbody>
+        <tr><td><b>${esc(FB.admins[0])}</b></td><td><small style="color:var(--gris)">Propietario</small></td><td></td></tr>
+        ${lista.map(x => `<tr><td>${esc(x.email)}</td><td><small style="color:var(--gris)">Administrador</small></td><td style="text-align:right"><button class="btn peq sec" data-quitar="${esc(x.email)}">Quitar</button></td></tr>`).join('')}
+      </tbody></table></div></section>`;
+    $('#ad-f').onsubmit = async ev => {
+      ev.preventDefault(); const e = $('#ad-e').value.trim().toLowerCase();
+      if (!/^[^\s@\/]+@[^\s@\/]+\.[^\s@\/]+$/.test(e)) return avisar('Correo no válido', 'Escribe un correo completo.', '✉️');
+      if (FB.admins.includes(e) || lista.some(x => x.email === e)) return avisar('Ya tiene acceso', e, 'ℹ️');
+      $('#ad-b').disabled = true;
+      try { await confirmar([W.poner('lit_admins/' + e, { email: e, alta: ahora() })]); lista.push({ id: e, email: e }); lista.sort((x, y) => x.email.localeCompare(y.email)); tostada('Administrador añadido'); pintar(); }
+      catch (er) { avisar('No se ha podido añadir', mensajeError(er), '⚠️'); $('#ad-b').disabled = false; }
+    };
+    $$('[data-quitar]', main).forEach(b => b.onclick = async () => {
+      const e = b.dataset.quitar;
+      if (!(await preguntar('¿Quitar a ' + e + '?', 'Dejará de poder entrar en la administración.', 'Quitar'))) return;
+      try { await confirmar([W.borrar('lit_admins/' + e)]); lista = lista.filter(x => x.email !== e); tostada('Administrador quitado'); pintar(); }
+      catch (er) { avisar('No se ha podido quitar', mensajeError(er), '⚠️'); }
+    });
+  };
+  pintar();
+};
 VISTAS.ajustes = async main => {
   await cargarConfig(true).catch(() => {});
   const k = { ...E.cfg };
