@@ -1,0 +1,1460 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Biblioteca Siurot · Administración</title>
+<meta name="theme-color" content="#1f4e4a">
+<meta name="description" content="Biblioteca de relatos, cuentos y poemas del alumnado del CEIP Manuel Siurot">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f4e4a'/%3E%3Cpath d='M14 18h14a6 6 0 0 1 4 2 6 6 0 0 1 4-2h14v28H36a6 6 0 0 0-4 2 6 6 0 0 0-4-2H14z' fill='%23fff'/%3E%3Cpath d='M32 20v28' stroke='%231f4e4a' stroke-width='2'/%3E%3Cpath d='M42 18v14l3-2 3 2V18' fill='%23f2b62c'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Lexend:wght@300;400;500;600;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,700;1,7..72,400;1,7..72,700&family=Andika:ital,wght@0,400;0,700;1,400;1,700&family=Comic+Neue:ital,wght@0,400;0,700;1,400;1,700&family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&family=Playwrite+ES:wght@100..400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pizarra:#1f4e4a; --pizarra2:#163a37; --tiza:#e8f1ee;
+  --papel:#eef3f1; --hoja:#ffffff; --tinta:#1d2a2e; --gris:#5b6a6d; --gris2:#8a9799;
+  --linea:#d2dddb; --lapiz:#f2b62c; --lapiz2:#c98d00; --rojo:#c0392b; --verde:#2e7d4f;
+  --madera:#9a6a3c; --madera2:#7a5230;
+  --r:14px; --sombra:0 1px 2px rgba(22,58,55,.08),0 6px 18px rgba(22,58,55,.07);
+  --titulos:'Young Serif',Georgia,serif; --ui:'Lexend',system-ui,sans-serif; --libro:'Literata',Georgia,serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--papel);color:var(--tinta);font-family:var(--ui);font-size:16px;line-height:1.5;-webkit-tap-highlight-color:transparent;min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--lapiz);outline-offset:2px}
+h1,h2,h3{font-family:var(--titulos);font-weight:400;line-height:1.2;margin:0}
+a{color:var(--pizarra)}
+.oculto{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---------- barra superior ---------- */
+.barra{position:sticky;top:0;z-index:20;background:var(--pizarra);color:#fff;display:flex;align-items:center;gap:8px;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top));box-shadow:0 2px 0 var(--pizarra2)}
+.barra .atras{background:rgba(255,255,255,.12);border:0;color:#fff;width:42px;height:42px;border-radius:12px;font-size:1.3rem;display:grid;place-items:center}
+.barra .atras:hover{background:rgba(255,255,255,.22)}
+.marca{display:flex;align-items:center;gap:10px;background:none;border:0;color:#fff;padding:4px 6px;border-radius:10px;min-width:0}
+.marca svg{flex:none}
+.marca span{font-family:var(--titulos);font-size:1.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.barra .esp{flex:1}
+.yo{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border:0;color:#fff;border-radius:999px;padding:4px 12px 4px 4px;max-width:46vw}
+.yo .ini{width:34px;height:34px;border-radius:50%;background:var(--lapiz);color:var(--pizarra2);display:grid;place-items:center;font-weight:700;flex:none}
+.yo .nom{font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:520px){.yo .nom{display:none}.yo{padding:4px}}
+.menuyo{position:absolute;right:12px;top:calc(62px + env(safe-area-inset-top));background:var(--hoja);color:var(--tinta);border-radius:var(--r);box-shadow:0 12px 40px rgba(0,0,0,.2);min-width:230px;padding:6px;z-index:30}
+.menuyo button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;padding:11px 12px;border-radius:10px}
+.menuyo button:hover{background:var(--papel)}
+.menuyo .cab{padding:10px 12px;border-bottom:1px solid var(--linea);margin-bottom:4px}
+.menuyo .cab b{display:block}
+.menuyo .cab small{color:var(--gris)}
+
+main{max-width:1100px;margin:0 auto;padding:18px 16px 80px}
+.estrecho{max-width:760px;margin:0 auto}
+
+/* ---------- botones y campos ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;padding:11px 18px;font-weight:600;background:var(--pizarra);color:#fff;min-height:46px;text-decoration:none;transition:transform .08s,background .15s}
+.btn:hover{background:var(--pizarra2)}
+.btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.sec{background:var(--hoja);color:var(--pizarra);box-shadow:inset 0 0 0 2px var(--linea)}
+.btn.sec:hover{box-shadow:inset 0 0 0 2px var(--pizarra)}
+.btn.amar{background:var(--lapiz);color:var(--pizarra2)}
+.btn.amar:hover{background:#e6a817}
+.btn.rojo{background:var(--rojo)}
+.btn.peq{min-height:38px;padding:7px 12px;font-size:.9rem;border-radius:10px}
+.btn.txt{background:none;color:var(--pizarra);padding:8px 10px;min-height:38px}
+.btn.txt:hover{background:rgba(31,78,74,.08)}
+.campo{display:block;margin-bottom:14px}
+.campo>span{display:block;font-weight:600;margin-bottom:6px;font-size:.95rem}
+.campo small{color:var(--gris);font-weight:400}
+input[type=text],input[type=password],input[type=number],input[type=date],input[type=search],select,textarea{width:100%;border:2px solid var(--linea);background:var(--hoja);border-radius:12px;padding:12px 14px;min-height:50px;outline:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--pizarra)}
+textarea{resize:vertical;min-height:110px;line-height:1.5}
+.check{display:flex;gap:10px;align-items:center;cursor:pointer;user-select:none}
+.check input{width:22px;height:22px;accent-color:var(--pizarra)}
+.fila{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.fila.fin{justify-content:flex-end}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+
+.hoja{background:var(--hoja);border-radius:var(--r);box-shadow:var(--sombra);padding:18px}
+.seccion{margin-top:30px}
+.seccion>h2{font-size:1.45rem;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.seccion>h2 .mas{margin-left:auto;font-family:var(--ui);font-size:.9rem}
+.vacio{text-align:center;color:var(--gris);padding:30px 16px;background:var(--hoja);border-radius:var(--r);border:2px dashed var(--linea)}
+.vacio .btn{margin-top:12px}
+.chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 10px;font-size:.8rem;font-weight:600;background:var(--papel);color:var(--pizarra)}
+.chip.borrador{background:#eceff0;color:#4b5759}
+.chip.publicado{background:#dff1e6;color:#1f6b40}
+.chip.revisar{background:#fbe3e0;color:#9d2c20}
+.chip.reto{background:#fff2cc;color:#7a5800}
+.chip.dest{background:var(--lapiz);color:var(--pizarra2)}
+
+/* ---------- login ---------- */
+.login{min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--pizarra);background-image:radial-gradient(circle at 20% 15%,rgba(255,255,255,.07),transparent 40%),radial-gradient(circle at 85% 90%,rgba(242,182,44,.12),transparent 45%)}
+.login .caja{width:100%;max-width:420px}
+.login .logo{display:flex;flex-direction:column;align-items:center;color:#fff;margin-bottom:22px;text-align:center}
+.login .logo h1{font-size:2.3rem;margin-top:12px}
+.login .logo p{margin:6px 0 0;color:var(--tiza);opacity:.85}
+.login .hoja{padding:24px}
+.login input{min-height:58px;font-size:1.1rem}
+.login .btn{width:100%;min-height:56px;font-size:1.1rem;margin-top:6px}
+.login .nota{font-size:.88rem;color:var(--gris);margin-top:14px;text-align:center}
+.con-ojo{position:relative}
+.con-ojo input{padding-right:60px}
+.ojo{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;min-width:46px;min-height:46px;font-size:1.25rem;border-radius:10px;display:grid;place-items:center}
+.ojo:hover{background:var(--papel)}
+.err{background:#fbe3e0;color:#8f2418;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:.95rem}
+
+/* ---------- inicio ---------- */
+.saludo{background:var(--pizarra);color:#fff;border-radius:20px;padding:24px 22px;position:relative;overflow:hidden}
+.saludo::after{content:"";position:absolute;inset:auto -40px -60px auto;width:220px;height:220px;border-radius:50%;background:rgba(242,182,44,.14)}
+.saludo h1{font-size:clamp(1.8rem,5vw,2.6rem)}
+.saludo p{margin:6px 0 18px;color:var(--tiza);max-width:46ch}
+.acciones{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;position:relative;z-index:1}
+.acc{display:flex;flex-direction:column;align-items:flex-start;gap:4px;background:rgba(255,255,255,.1);border:0;color:#fff;border-radius:16px;padding:14px;text-align:left;min-height:96px;transition:background .15s}
+.acc:hover{background:rgba(255,255,255,.18)}
+.acc .ic{font-size:1.6rem;line-height:1}
+.acc b{font-size:1.02rem}
+.acc small{color:var(--tiza);opacity:.85;font-size:.82rem;line-height:1.3}
+.acc.prim{background:var(--lapiz);color:var(--pizarra2)}
+.acc.prim small{color:var(--pizarra2);opacity:.8}
+.acc.prim:hover{background:#ffc742}
+@media(max-width:560px){.saludo::after{display:none}.acciones{grid-template-columns:1fr}.acc{min-height:0;flex-direction:row;align-items:center;gap:12px}.acc small{display:none}}
+.aviso{display:flex;gap:12px;align-items:flex-start;background:#fff8e1;border-left:5px solid var(--lapiz);border-radius:12px;padding:14px 16px;margin-top:16px}
+.aviso.rojo{background:#fdecea;border-color:var(--rojo)}
+.aviso.verde{background:#e5f4ea;border-color:var(--verde)}
+.aviso .ic{font-size:1.4rem;line-height:1.2}
+.aviso p{margin:0}
+.aviso .btn{margin-top:8px}
+
+/* retos */
+.retos{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.reto{background:var(--hoja);border-radius:var(--r);box-shadow:var(--sombra);padding:16px;border-top:6px solid var(--lapiz);display:flex;flex-direction:column;gap:8px}
+.reto h3{font-size:1.2rem}
+.reto p{margin:0;color:var(--gris)}
+.reto .fila{margin-top:auto}
+
+/* podio: libros en una balda */
+.estante{background:var(--hoja);border-radius:20px;box-shadow:var(--sombra);padding:22px 14px 0;overflow:hidden}
+.podio{display:flex;justify-content:center;align-items:flex-end;gap:clamp(10px,4vw,36px);min-height:260px}
+.podio .puesto{display:flex;flex-direction:column;align-items:center;width:clamp(96px,26vw,170px)}
+.podio .medalla{font-size:1.7rem;margin-bottom:4px}
+.podio .lp{width:100%;border:0;padding:0;background:none;text-align:left}
+.podio .p1 .tapa{height:230px}
+.podio .p2 .tapa{height:192px}
+.podio .p3 .tapa{height:168px}
+.podio .nota{font-size:.85rem;margin:6px 0 10px;text-align:center}
+@media(max-width:520px){.podio .tapa{padding:10px 8px 10px 18px}.podio .tapa .tt{font-size:.92rem;-webkit-line-clamp:5}.podio .tapa .emo{font-size:2rem}.podio .p1 .tapa{height:210px}.podio .p2 .tapa{height:180px}.podio .p3 .tapa{height:160px}}
+.balda{height:16px;background:linear-gradient(var(--madera),var(--madera2));border-radius:3px 3px 0 0;margin:0 -14px;box-shadow:0 -2px 0 rgba(0,0,0,.06) inset}
+.podio-vacio{padding:26px 10px 30px;text-align:center;color:var(--gris)}
+
+/* ---------- libros (portadas) ---------- */
+.estanteria{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:22px 16px}
+@media(max-width:420px){.estanteria{grid-template-columns:repeat(2,1fr);gap:18px 12px}}
+.libro{display:flex;flex-direction:column;border:0;background:none;padding:0;text-align:left;color:inherit;min-width:0}
+.tapa{position:relative;width:100%;aspect-ratio:3/4.2;border-radius:4px 12px 12px 4px;background:var(--c,#2f7d5b);color:#fff;padding:14px 12px 12px 22px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 1px 0 rgba(0,0,0,.15),4px 6px 14px rgba(22,58,55,.18);transition:transform .15s ease,box-shadow .15s ease}
+.podio .tapa{aspect-ratio:auto}
+.libro:hover .tapa,.lp:hover .tapa{transform:translateY(-4px) rotate(-.6deg);box-shadow:0 1px 0 rgba(0,0,0,.15),8px 12px 22px rgba(22,58,55,.24)}
+.tapa::before{content:"";position:absolute;left:0;top:0;bottom:0;width:12px;background:rgba(0,0,0,.22);box-shadow:2px 0 0 rgba(255,255,255,.18)}
+.tapa::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,rgba(255,255,255,.16),transparent 40%);pointer-events:none}
+.tapa .emo{font-size:2.4rem;line-height:1;margin-bottom:auto;filter:drop-shadow(0 2px 2px rgba(0,0,0,.2))}
+.tapa .tt{font-family:var(--titulos);font-size:1.12rem;line-height:1.18;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+.tapa .au{font-size:.78rem;opacity:.92;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tapa .cinta{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:var(--lapiz);display:grid;place-items:center;font-size:.85rem;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.tapa .leido{position:absolute;top:8px;right:8px;background:rgba(255,255,255,.92);color:var(--verde);border-radius:999px;width:26px;height:26px;display:grid;place-items:center;font-size:.85rem;font-weight:700}
+.tapa .cinta + .leido{top:auto;bottom:8px}
+.pie{padding:8px 2px 0;font-size:.85rem;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;color:var(--gris)}
+.pie .gen{width:100%;color:var(--gris2);font-size:.78rem}
+.est{display:inline-flex;align-items:center;gap:4px;color:var(--tinta);font-weight:600}
+.estrellas{position:relative;display:inline-block;font-size:1em;line-height:1;letter-spacing:1px;color:#d8dfdd}
+.estrellas i{position:absolute;left:0;top:0;overflow:hidden;white-space:nowrap;color:var(--lapiz);font-style:normal}
+.fila-scroll{display:grid;grid-auto-flow:column;grid-auto-columns:150px;gap:16px;overflow-x:auto;padding:4px 2px 12px;scroll-snap-type:x mandatory}
+.fila-scroll .libro{scroll-snap-align:start}
+
+/* ---------- biblioteca: filtros ---------- */
+.filtros{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+.busca{position:relative}
+.busca input{padding-left:44px}
+.busca::before{content:"🔎";position:absolute;left:14px;top:50%;transform:translateY(-50%);opacity:.6}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.chips button{flex:none;border:2px solid var(--linea);background:var(--hoja);border-radius:999px;padding:7px 14px;font-weight:600;font-size:.9rem;color:var(--gris)}
+.chips button.on{background:var(--pizarra);border-color:var(--pizarra);color:#fff}
+.orden{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+@media(max-width:600px){.orden{grid-template-columns:1fr 1fr}.orden .solo{grid-column:1/-1}}
+.orden select{min-height:44px;padding:8px 12px}
+.contador{color:var(--gris);font-size:.9rem;margin:-6px 0 12px}
+
+/* ---------- lector ---------- */
+.ficha{background:var(--hoja);border-radius:20px;box-shadow:var(--sombra);overflow:hidden;display:grid;grid-template-columns:150px 1fr}
+.ficha .mini{padding:18px 0 18px 18px}
+.ficha .mini .tapa{aspect-ratio:3/4.2}
+.ficha .info{padding:20px}
+.ficha h1{font-size:clamp(1.6rem,4.5vw,2.3rem);word-break:break-word}
+.ficha .por{margin:8px 0 10px;font-size:1.02rem}
+.ficha .por button{background:none;border:0;padding:0;color:var(--pizarra);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.datos{display:flex;flex-wrap:wrap;gap:6px 14px;color:var(--gris);font-size:.9rem}
+.datos span{display:inline-flex;gap:5px;align-items:center}
+@media(max-width:560px){.ficha{grid-template-columns:96px 1fr}.ficha .mini{padding:14px 0 14px 14px}.ficha .info{padding:14px}.ficha .mini .tapa .tt,.ficha .mini .tapa .au{display:none}.ficha .mini .tapa .emo{font-size:2rem}}
+.herr{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 10px;align-items:center}
+.herr button{border:2px solid var(--linea);background:var(--hoja);border-radius:10px;min-width:44px;min-height:42px;padding:6px 10px;font-weight:600}
+.herr button.on{border-color:var(--pizarra);background:var(--pizarra);color:#fff}
+.herr .esp{flex:1}
+.lectura{background:var(--hoja);border-radius:20px;box-shadow:var(--sombra);padding:clamp(20px,5vw,48px);font-family:var(--libro);font-size:calc(1.12rem * var(--zoom,1));line-height:1.75;color:var(--tinta);overflow-wrap:break-word;transition:background .2s,color .2s}
+.lectura.sepia{background:#f6efdf;color:#3b3024}
+.lectura.noche{background:#1d2628;color:#e2ebe9}
+.lectura p{margin:0 0 1em}
+.lectura div{min-height:1em}
+.texto-relato p:last-child{margin-bottom:0}
+.fin-marca{text-align:center;margin-top:28px;font-family:var(--titulos);color:var(--gris2);font-size:1.1rem;letter-spacing:.2em}
+.lectura.noche .fin-marca{color:#93a3a5}
+
+.valorar{margin-top:22px}
+.valorar h2{font-size:1.4rem;margin-bottom:6px}
+.selestr{display:flex;gap:4px;margin:10px 0 4px}
+.selestr button{background:none;border:0;font-size:2.6rem;line-height:1;color:#d3dbd9;padding:2px;transition:transform .1s,color .1s}
+.selestr button.on{color:var(--lapiz)}
+.selestr button:hover{transform:scale(1.12)}
+.selestr-txt{min-height:1.5em;color:var(--gris);font-weight:600}
+.empiezos{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.empiezos button{border:1px dashed var(--gris2);background:var(--papel);border-radius:999px;padding:5px 12px;font-size:.85rem}
+.cuenta{font-size:.82rem;color:var(--gris);text-align:right;margin-top:4px}
+.bloqueo{display:flex;gap:12px;align-items:center;padding:16px;border-radius:14px;background:var(--papel);color:var(--gris)}
+.bloqueo .ic{font-size:1.8rem}
+
+.resenas{display:flex;flex-direction:column;gap:12px}
+.resena{background:var(--hoja);border-radius:var(--r);box-shadow:var(--sombra);padding:16px}
+.resena.maestro{border-left:5px solid var(--pizarra)}
+.resena.mia{border-left:5px solid var(--lapiz)}
+.resena.avisada{outline:2px solid var(--rojo)}
+.resena .cab{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.resena .av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex:none}
+.resena .quien{display:flex;flex-direction:column;line-height:1.25}
+.resena .quien small{color:var(--gris)}
+.resena .cab .estrellas{margin-left:auto;font-size:1.1rem}
+.resena p{margin:10px 0 0;white-space:pre-wrap;overflow-wrap:break-word}
+.resena .acts{display:flex;gap:4px;justify-content:flex-end;margin-top:6px}
+
+/* ---------- editor ---------- */
+.editor-top{display:grid;grid-template-columns:1fr 210px;gap:12px}
+@media(max-width:700px){.editor-top{grid-template-columns:1fr}}
+.titulo-in{font-family:var(--titulos)!important;font-size:1.5rem!important;min-height:58px!important}
+.portada-sel{display:flex;gap:12px;align-items:center}
+.portada-sel .tapa{width:92px;flex:none;padding:10px 8px 8px 16px}
+.portada-sel .tapa .emo{font-size:1.9rem}
+.portada-sel .tapa .tt{font-size:.75rem}
+.colores{display:flex;flex-wrap:wrap;gap:6px}
+.colores button{width:30px;height:30px;border-radius:8px;border:3px solid transparent;background:var(--c)}
+.colores button.on{border-color:var(--tinta)}
+.emojis{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px;max-height:260px;overflow:auto}
+.emojis button{font-size:1.6rem;border:2px solid var(--linea);background:var(--hoja);border-radius:10px;height:48px}
+.emojis button.on{border-color:var(--pizarra);background:var(--papel)}
+.toolbar{position:sticky;top:calc(58px + env(safe-area-inset-top));z-index:10;display:flex;flex-wrap:wrap;gap:4px;align-items:center;background:var(--hoja);border-radius:14px 14px 0 0;border:2px solid var(--linea);border-bottom:1px solid var(--linea);padding:6px}
+.toolbar .tb{border:0;background:none;min-width:40px;height:40px;border-radius:9px;font-size:1rem;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:0 8px;color:var(--tinta)}
+.toolbar .tb:hover{background:var(--papel)}
+.toolbar .tb.on{background:var(--pizarra);color:#fff}
+.toolbar .sep{width:1px;height:26px;background:var(--linea);margin:0 4px}
+.toolbar .dd{position:relative}
+.toolbar .tb.ancho{min-width:118px;justify-content:space-between;border:1px solid var(--linea)}
+.toolbar .colbar{display:block;width:18px;height:4px;border-radius:2px;background:var(--cc,#1d2a2e);margin-top:2px}
+.pop{position:absolute;top:44px;left:0;background:var(--hoja);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.2);padding:6px;z-index:15;min-width:200px}
+.pop button{display:block;width:100%;text-align:left;border:0;background:none;padding:9px 12px;border-radius:8px}
+.pop button:hover,.pop button.on{background:var(--papel)}
+.pop.colores-pop{display:grid;grid-template-columns:repeat(4,38px);gap:6px;min-width:0}
+.pop.colores-pop button{width:38px;height:38px;padding:0;border-radius:9px;background:var(--c);border:2px solid rgba(0,0,0,.08)}
+.pop.colores-pop .normal{grid-column:1/-1;width:auto;background:var(--papel);text-align:center;font-size:.85rem;font-weight:600}
+.hoja-editor{background:var(--hoja);border:2px solid var(--linea);border-top:0;border-radius:0 0 14px 14px;padding:clamp(18px,4vw,40px);min-height:420px;font-family:var(--libro);font-size:1.12rem;line-height:1.75;outline:none;overflow-wrap:break-word}
+.hoja-editor:focus{border-color:var(--pizarra)}
+.hoja-editor p{margin:0 0 1em}
+.hoja-editor{position:relative}
+.hoja-editor.vacia::before{content:attr(data-ph);position:absolute;left:clamp(18px,4vw,40px);right:clamp(18px,4vw,40px);top:clamp(18px,4vw,40px);color:var(--gris2);font-style:italic;pointer-events:none}
+.editor-pie{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;color:var(--gris);font-size:.88rem;margin:8px 2px 0}
+.guardado{display:inline-flex;align-items:center;gap:6px}
+.botonera{position:sticky;bottom:0;z-index:9;background:linear-gradient(transparent,var(--papel) 30%);padding:18px 0 calc(10px + env(safe-area-inset-bottom));display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.nota-maestro{background:#fdecea;border-left:5px solid var(--rojo);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.nota-maestro b{display:block;margin-bottom:4px}
+.nota-maestro p{margin:0;white-space:pre-wrap}
+
+/* ---------- listas (mis obras, panel) ---------- */
+.lista{display:flex;flex-direction:column;gap:10px}
+.item{display:grid;grid-template-columns:64px 1fr auto;gap:14px;align-items:center;background:var(--hoja);border-radius:var(--r);box-shadow:var(--sombra);padding:12px}
+.item .tapa{padding:6px 4px 4px 12px;border-radius:3px 8px 8px 3px}
+.item .tapa .emo{font-size:1.5rem;margin:auto 0}
+.item .tapa .tt,.item .tapa .au{display:none}
+.item .tapa::before{width:7px}
+.item h3{font-size:1.12rem;word-break:break-word}
+.item .meta{color:var(--gris);font-size:.86rem;display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px;align-items:center}
+.item .bts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:640px){.item{grid-template-columns:52px 1fr}.item .bts{grid-column:1/-1;justify-content:flex-start}}
+
+.tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:16px;padding-bottom:4px}
+.tabs button{flex:none;border:0;background:var(--hoja);box-shadow:var(--sombra);border-radius:12px;padding:10px 16px;font-weight:600;color:var(--gris);display:inline-flex;gap:6px;align-items:center}
+.tabs button.on{background:var(--pizarra);color:#fff}
+.tabs .bola{background:var(--rojo);color:#fff;border-radius:999px;font-size:.75rem;padding:1px 7px}
+.tabla-wrap{overflow-x:auto;background:var(--hoja);border-radius:var(--r);box-shadow:var(--sombra)}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--linea);white-space:nowrap}
+th{background:var(--papel);font-weight:600;position:sticky;top:0;cursor:pointer}
+td.num,th.num{text-align:right}
+tr:hover td{background:#f7faf9}
+.ajuste{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid var(--linea)}
+.ajuste:last-child{border-bottom:0}
+.ajuste p{margin:2px 0 0;color:var(--gris);font-size:.88rem}
+.interruptor{position:relative;width:54px;height:30px;flex:none}
+.interruptor input{opacity:0;width:0;height:0}
+.interruptor span{position:absolute;inset:0;background:#c9d3d1;border-radius:999px;transition:background .15s}
+.interruptor span::after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.interruptor input:checked+span{background:var(--verde)}
+.interruptor input:checked+span::after{transform:translateX(24px)}
+.interruptor input:focus-visible+span{outline:3px solid var(--lapiz)}
+
+/* perfil / insignias */
+.cifras{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.cifra{background:var(--hoja);border-radius:var(--r);box-shadow:var(--sombra);padding:14px 16px}
+.cifra b{display:block;font-family:var(--titulos);font-size:1.9rem;font-weight:400;color:var(--pizarra)}
+.cifra span{color:var(--gris);font-size:.9rem}
+.insignias{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.insignia{background:var(--hoja);border-radius:var(--r);box-shadow:var(--sombra);padding:14px;text-align:center}
+.insignia .ic{font-size:2.3rem;line-height:1.1}
+.insignia b{display:block;margin-top:6px}
+.insignia small{color:var(--gris);display:block;line-height:1.3;margin-top:3px}
+.insignia.no{opacity:.45;filter:grayscale(1)}
+.barrita{height:6px;background:var(--papel);border-radius:3px;margin-top:8px;overflow:hidden}
+.barrita i{display:block;height:100%;background:var(--lapiz)}
+
+/* ---------- modales y avisos ---------- */
+.velo{position:fixed;inset:0;background:rgba(18,32,34,.55);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;animation:aparece .15s}
+.modal{background:var(--hoja);border-radius:20px;width:100%;max-width:480px;max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:sube .18s ease-out}
+.modal.ancho{max-width:640px}
+.modal .mc{padding:22px 22px 8px}
+.modal h2{font-size:1.45rem;margin-bottom:8px}
+.modal p{margin:0 0 10px}
+.modal .mb{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:12px 22px 20px}
+.modal .ic-grande{font-size:2.6rem;line-height:1;margin-bottom:8px}
+@keyframes aparece{from{opacity:0}}
+@keyframes sube{from{transform:translateY(16px);opacity:0}}
+.tostadas{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;gap:8px;align-items:center;width:min(92vw,460px);pointer-events:none}
+.tostada{background:var(--tinta);color:#fff;border-radius:12px;padding:12px 16px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:sube .2s ease-out;font-size:.95rem;pointer-events:auto}
+.tostada.ok{background:var(--verde)}
+.tostada.mal{background:var(--rojo)}
+.cargando{display:flex;justify-content:center;align-items:center;gap:12px;padding:40px;color:var(--gris)}
+.giro{width:26px;height:26px;border:3px solid var(--linea);border-top-color:var(--pizarra);border-radius:50%;animation:gira .8s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- impresión ---------- */
+#imprimir{display:none}
+@media print{
+  body{background:#fff}
+  body.imprimiendo>*:not(#imprimir){display:none!important}
+  body.imprimiendo #imprimir{display:block}
+  #imprimir{font-family:var(--libro);color:#000;font-size:12.5pt;line-height:1.6}
+  #imprimir .pagina{page-break-after:always;break-after:page}
+  #imprimir .portada-ant{text-align:center;padding-top:28vh}
+  #imprimir .portada-ant h1{font-size:34pt}
+  #imprimir h2{font-family:var(--titulos);font-size:22pt;margin:0 0 4pt}
+  #imprimir .autor{font-style:italic;margin:0 0 18pt;color:#333}
+  #imprimir .indice li{margin:4pt 0}
+  #imprimir p{margin:0 0 .8em}
+  @page{margin:2cm}
+}
+
+/* Login por lista */
+.pestanas{margin-bottom:14px;justify-content:center;flex-wrap:wrap}
+.login .chips{flex-wrap:wrap;overflow:visible}
+.nombres{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;max-height:46vh;overflow:auto;padding:2px}
+.nombres button{display:flex;align-items:center;gap:10px;border:2px solid var(--linea);background:var(--hoja);border-radius:14px;padding:9px 12px;font-weight:600;text-align:left;min-height:52px;color:var(--tinta,inherit)}
+.nombres button:hover,.nombres button:focus-visible{border-color:var(--pizarra)}
+.ini{width:34px;height:34px;border-radius:50%;color:#fff;display:inline-grid;place-items:center;font-weight:700;font-size:.85rem;flex:none}
+.yo .ini{color:var(--pizarra2)}
+.elegido{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.elegido .ini{width:48px;height:48px;font-size:1.05rem}
+.elegido small{display:block;color:var(--gris)}
+.pestanas button{background:rgba(255,255,255,.14);border-color:transparent;color:#fff}
+.pestanas button.on{background:#fff;color:var(--pizarra);border-color:#fff}
+.tarjetas{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.tarj{border:1.5px dashed #888;border-radius:8px;padding:10px 12px;break-inside:avoid;font-size:12pt}
+.tarj b{display:block;font-size:13pt}.tarj span{color:#555;font-size:10pt}.tarj p{margin:4px 0 0}.tarj code{font-size:13pt;font-weight:700}
+code{background:rgba(31,78,74,.08);padding:1px 6px;border-radius:6px}
+.toolbar select{width:auto;min-height:38px;padding:4px 10px;font-size:.9rem;border-radius:10px}
+td .btn.peq{margin:2px 0}
+
+/* Panel de inicio */
+.panel{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.tarjeta{display:flex;flex-direction:column;gap:4px;text-align:left;background:var(--hoja);color:var(--tinta,#1d2a2e);border:2px solid var(--linea);border-radius:16px;padding:18px;min-height:120px;box-shadow:var(--sombra);transition:transform .1s,border-color .15s}
+.tarjeta:hover,.tarjeta:focus-visible{border-color:var(--pizarra);transform:translateY(-2px)}
+.tarjeta .ic{font-size:1.7rem;line-height:1}
+.tarjeta b{font-size:1.1rem;color:var(--pizarra2,#173a37);margin-top:6px}
+.tarjeta small{color:var(--gris);font-size:.92rem;line-height:1.35}
+.tarjeta.aviso-on{border-color:var(--lapiz);background:#fff8e1}
+select,option{color:#1d2a2e;background:#fff}
+
+/* Claves legibles: la l no se parece al 1 */
+code.cl,.tarj code{font-family:"Courier New","Cousine","DejaVu Sans Mono",Consolas,monospace;font-size:15pt;letter-spacing:.06em}
+code.cl .cf{font-weight:900}
+code.cl .cg{display:inline-block;width:.7em}
+code.cl .cl-l{font-weight:400;letter-spacing:.12em}
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="capa-modal"></div>
+<div class="tostadas" id="tostadas" aria-live="polite"></div>
+<div id="imprimir"></div>
+
+
+<script>
+'use strict';
+const PREF = 'bibAdmin.';
+/* =========================================================================
+   BIBLIOTECA SIUROT — CEIP Manuel Siurot
+   Mismo proyecto Firebase y mismas cuentas que Ajedrez Siurot.
+   Firebase por API REST (sin SDK ni dependencias).
+   ========================================================================= */
+const FB = {
+  apiKey: 'AIzaSyC4YHA4G1LWqs0ASkcD7Nlq89DTh4ZB_Mw',
+  proyecto: 'ajedrez-siurot',
+  dominio: 'ajedrez-siurot.app',
+  admin: 'manuelvsanchez@gmail.com'
+};
+const URL_AUTH = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + FB.apiKey;
+const URL_TOKEN = 'https://securetoken.googleapis.com/v1/token?key=' + FB.apiKey;
+const RAIZ = 'projects/' + FB.proyecto + '/databases/(default)/documents';
+const URL_FS = 'https://firestore.googleapis.com/v1/' + RAIZ;
+
+/* ---------------------------- utilidades ---------------------------- */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ahora = () => Date.now();
+const nuevoId = () => { const a = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; const r = crypto.getRandomValues(new Uint8Array(20)); for (const x of r) s += a[x % a.length]; return s; };
+const ls = {
+  get(k, d = null) { try { const v = localStorage.getItem(PREF + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(PREF + k, JSON.stringify(v)); return true; } catch { return false; } },
+  del(k) { try { localStorage.removeItem(PREF + k); } catch {} }
+};
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function fecha(ms) { if (!ms) return ''; const d = new Date(ms); return d.getDate() + ' ' + MESES[d.getMonth()] + ' ' + d.getFullYear(); }
+function haceTiempo(ms) {
+  if (!ms) return ''; const s = (ahora() - ms) / 1000;
+  if (s < 60) return 'ahora mismo'; if (s < 3600) return 'hace ' + Math.floor(s / 60) + ' min';
+  if (s < 86400) return 'hace ' + Math.floor(s / 3600) + ' h';
+  if (s < 86400 * 7) { const d = Math.floor(s / 86400); return d === 1 ? 'ayer' : 'hace ' + d + ' días'; }
+  return fecha(ms);
+}
+const nfmt = n => (Math.round(n * 10) / 10).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const normal = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const comparaTexto = (a, b) => String(a).localeCompare(String(b), 'es', { numeric: true, sensitivity: 'base' });
+const iniciales = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+function colorPersona(s) { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return COLORES[h % COLORES.length]; }
+
+/* ---------------------------- constantes ---------------------------- */
+const COLORES = ['#2f6f9f','#b0503a','#2e7d57','#7a4f9a','#c48a1a','#23707c','#9c3d5c','#566330','#2c3e66','#a5642a','#4f8a3a','#6b4e3d'];
+const EMOJIS = ['📖','🐉','🏰','🌙','🚀','🐱','🐶','🌳','⚽','🧙','👻','🦄','🏴‍☠️','🌊','🎃','❄️','🌈','🦊','🐢','🤖','👽','🦖','🍕','🎭','🎈','🔍','🗝️','📜','⭐','🌋','🐙','🦁','🐼','🐧','🌸','🍀','🔥','💎','🎵','🧸','🚂','🏝️','🦋','🐝','🌻','🍄','🧚','🦉','🐺','🐬','🌍','🏆','💌','🎨','⛵','🚲','🏠','👑','🗺️','🕰️'];
+const GENEROS = ['Cuento','Relato','Poema','Fábula','Leyenda','Diario','Carta','Teatro','Noticia','Otro'];
+const FUENTES = [
+  { id: 'libro', n: 'Libro', css: "'Literata', Georgia, serif", k: 'literata' },
+  { id: 'redonda', n: 'Redonda', css: "'Lexend', sans-serif", k: 'lexend' },
+  { id: 'escolar', n: 'Escolar', css: "'Andika', sans-serif", k: 'andika' },
+  { id: 'comic', n: 'Cómic', css: "'Comic Neue', cursive", k: 'comic neue' },
+  { id: 'maquina', n: 'Máquina de escribir', css: "'Courier Prime', monospace", k: 'courier prime' },
+  { id: 'ligada', n: 'Ligada', css: "'Playwrite ES', cursive", k: 'playwrite es' }
+];
+const TAMANOS = [
+  { n: 'Pequeña', v: '0.85em' }, { n: 'Normal', v: '1em' }, { n: 'Grande', v: '1.3em' },
+  { n: 'Muy grande', v: '1.7em' }, { n: 'Enorme', v: '2.2em' }
+];
+const COLORES_TEXTO = ['#c0392b','#d35400','#b7950b','#1e8449','#138d75','#2471a3','#1a3e72','#7d3c98','#c2185b','#6e4b2a','#707b7c'];
+const CFG_DEF = { escritura: true, valoraciones: true, resenas: true, minPalabras: 30, soloMiCiclo: false, aviso: '', minVotosPodio: 3, curso: '' };
+const CICLOS = [
+  { n: 1, nombre: 'Primer ciclo', cursos: '1º y 2º' },
+  { n: 2, nombre: 'Segundo ciclo', cursos: '3º y 4º' },
+  { n: 3, nombre: 'Tercer ciclo', cursos: '5º y 6º' }
+];
+/* El ciclo se deduce del grupo: «4ºA» → segundo ciclo. Sin número al principio → 0 (desconocido). */
+function cicloDeGrupo(g) { const m = String(g || '').trim().match(/^([1-6])/); if (!m) return 0; const n = +m[1]; return n <= 2 ? 1 : n <= 4 ? 2 : 3; }
+const nombreCiclo = n => (CICLOS.find(c => c.n === n) || { nombre: 'Sin ciclo' }).nombre;
+/* Curso escolar de septiembre a agosto: octubre de 2026 → «2026-27» */
+function cursoEscolar(f = new Date()) { const y = f.getFullYear(); return f.getMonth() >= 8 ? y + '-' + String(y + 1).slice(2) : (y - 1) + '-' + String(y).slice(2); }
+const EMPIEZOS = ['Me ha gustado…','Mi parte favorita es…','El personaje que más me gusta es…','Me ha sorprendido…','Podría mejorar…','Se lo recomiendo a…'];
+const TXT_ESTRELLAS = ['', 'No me ha gustado', 'Regular', 'Está bien', 'Me ha gustado mucho', '¡Me ha encantado!'];
+
+/* Palabras no permitidas (se comparan sin tildes y en minúsculas) */
+const PROHIBIDAS = ['puta','puto','putas','putos','mierda','mierdas','joder','jodete','gilipollas','gilipolla','cabron','cabrona','cabrones','maricon','maricones','polla','pollas','follar','follando','zorra','zorras','subnormal','subnormales','mamon','capullo','capulla','imbecil','imbeciles','hijoputa','cojones','pendejo','pendeja'];
+const PROHIBIDAS_RESENA = ['tonto','tonta','tontos','tontas','idiota','idiotas','estupido','estupida','estupidos','estupidas','basura','asco','asquerosa','asqueroso','pringado','pringada','penosa','penoso'];
+function palabrasMalas(texto, estricto) {
+  const t = ' ' + normal(texto).replace(/[^a-zñ0-9]+/g, ' ') + ' ';
+  const lista = estricto ? PROHIBIDAS.concat(PROHIBIDAS_RESENA) : PROHIBIDAS;
+  return lista.filter(p => t.includes(' ' + normal(p) + ' ') || (p === 'hijoputa' && t.includes(' hijo de puta ')));
+}
+
+/* ---------------------------- estado ---------------------------- */
+const E = {
+  ses: null,          // {uid, email, tok, exp, ref, recordar}
+  yo: null,           // {uid, nombre, grupo, alias, ciclo}
+  cfg: { ...CFG_DEF },
+  relatos: {},        // id -> ficha (caché)
+  sync: null,         // readTime del último sync incremental
+  cargados: [],       // alcances ya descargados: «ciclo:curso» o «ciclo:*»
+  ultimaSync: 0,
+  ultimaCfg: 0,
+  resenasCache: {},   // relatoId -> {firma, lista}
+  usuarios: null      // solo admin
+};
+
+/* =========================================================================
+   FIREBASE (REST)
+   ========================================================================= */
+class ErrorFB extends Error { constructor(msg, cod, estado) { super(msg); this.cod = cod; this.estado = estado; } }
+
+async function pedir(url, opc = {}) {
+  let r;
+  try { r = await fetch(url, opc); }
+  catch (e) { throw new ErrorFB('No hay conexión a internet. Comprueba la red y vuelve a intentarlo.', 'RED', 0); }
+  let j = null; const t = await r.text();
+  try { j = t ? JSON.parse(t) : null; } catch {}
+  if (!r.ok) {
+    const e = (Array.isArray(j) ? j[0] : j)?.error || {};
+    throw new ErrorFB(e.message || ('Error ' + r.status), e.status || e.message || ('HTTP' + r.status), r.status);
+  }
+  return j;
+}
+
+function guardarSesion() {
+  const s = E.ses; if (!s) return;
+  const datos = JSON.stringify({ uid: s.uid, email: s.email, ref: s.ref, tok: s.tok, exp: s.exp });
+  try {
+    sessionStorage.setItem(PREF + 'ses', datos);
+    if (s.recordar) localStorage.setItem(PREF + 'ses', datos); else localStorage.removeItem(PREF + 'ses');
+  } catch {}
+}
+function leerSesion() {
+  try {
+    const t = sessionStorage.getItem(PREF + 'ses'); if (t) { const s = JSON.parse(t); s.recordar = !!localStorage.getItem(PREF + 'ses'); return s; }
+    const l = localStorage.getItem(PREF + 'ses'); if (l) { const s = JSON.parse(l); s.recordar = true; return s; }
+  } catch {}
+  return null;
+}
+function borrarSesion() { try { sessionStorage.removeItem(PREF + 'ses'); localStorage.removeItem(PREF + 'ses'); } catch {} }
+
+async function entrar(usuario, clave, recordar) {
+  usuario = usuario.trim();
+  const email = usuario.includes('@') ? usuario.toLowerCase() : usuario.toLowerCase().replace(/\s+/g, '') + '@' + FB.dominio;
+  const intento = async pass => pedir(URL_AUTH, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: pass, returnSecureToken: true }) });
+  let j;
+  try { j = await intento(clave); }
+  catch (e) {
+    if (clave !== clave.toLowerCase() && /INVALID|PASSWORD|CREDENTIAL/.test(e.cod)) j = await intento(clave.toLowerCase());
+    else throw e;
+  }
+  E.ses = { uid: j.localId, email: j.email, tok: j.idToken, ref: j.refreshToken, exp: ahora() + (+j.expiresIn) * 1000, recordar };
+  guardarSesion();
+}
+
+async function token() {
+  const s = E.ses; if (!s) throw new ErrorFB('Sesión cerrada', 'SIN_SESION', 401);
+  if (s.tok && ahora() < s.exp - 5 * 60 * 1000) return s.tok;
+  const j = await pedir(URL_TOKEN, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(s.ref) });
+  s.tok = j.id_token; s.ref = j.refresh_token; s.exp = ahora() + (+j.expires_in) * 1000;
+  guardarSesion();
+  return s.tok;
+}
+
+async function fs(metodo, ruta, cuerpo) {
+  const llamar = async () => pedir(URL_FS + ruta, {
+    method: metodo,
+    headers: { 'Authorization': 'Bearer ' + await token(), ...(cuerpo ? { 'Content-Type': 'application/json' } : {}) },
+    body: cuerpo ? JSON.stringify(cuerpo) : undefined
+  });
+  try { return await llamar(); }
+  catch (e) {
+    if (e.estado === 401 && E.ses) { E.ses.exp = 0; return await llamar(); }
+    throw e;
+  }
+}
+
+/* --- conversión de valores Firestore --- */
+function enc(v) {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (typeof v === 'string') return { stringValue: v };
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(enc) } };
+  return { mapValue: { fields: encC(v) } };
+}
+function encC(o) { const f = {}; for (const k in o) if (o[k] !== undefined) f[k] = enc(o[k]); return f; }
+function dec(v) {
+  if (!v) return null;
+  if ('stringValue' in v) return v.stringValue;
+  if ('integerValue' in v) return Number(v.integerValue);
+  if ('doubleValue' in v) return Number(v.doubleValue);
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('timestampValue' in v) return v.timestampValue;
+  if ('mapValue' in v) return decC(v.mapValue.fields || {});
+  if ('arrayValue' in v) return (v.arrayValue.values || []).map(dec);
+  return null;
+}
+function decC(f) { const o = {}; for (const k in f) o[k] = dec(f[k]); return o; }
+const idDe = nombre => nombre.split('/').pop();
+const campoMapa = (mapa, clave) => mapa + '.`' + clave + '`';
+
+async function leerDoc(ruta) {
+  try { const d = await fs('GET', '/' + ruta); return { id: idDe(d.name), ...decC(d.fields || {}) }; }
+  catch (e) { if (e.estado === 404) return null; throw e; }
+}
+async function leerPublico(ruta) {
+  try { const d = await pedir(URL_FS + '/' + ruta + '?key=' + FB.apiKey); return { id: idDe(d.name), ...decC(d.fields || {}) }; }
+  catch (e) { if (e.estado === 404) return null; throw e; }
+}
+async function consultar(col, { donde = [], orden, limite } = {}) {
+  const sq = { from: [{ collectionId: col }] };
+  const filtros = donde.map(([campo, op, valor]) => ({ fieldFilter: { field: { fieldPath: campo }, op, value: valor && valor.__ts ? { timestampValue: valor.__ts } : enc(valor) } }));
+  if (filtros.length === 1) sq.where = filtros[0];
+  else if (filtros.length > 1) sq.where = { compositeFilter: { op: 'AND', filters: filtros } };
+  if (orden) sq.orderBy = [{ field: { fieldPath: orden[0] }, direction: orden[1] || 'ASCENDING' }];
+  if (limite) sq.limit = limite;
+  const r = await fs('POST', ':runQuery', { structuredQuery: sq });
+  const docs = []; let lectura = null;
+  for (const x of r || []) { if (x.readTime) lectura = x.readTime; if (x.document) docs.push({ id: idDe(x.document.name), ...decC(x.document.fields || {}) }); }
+  return { docs, lectura };
+}
+/* Escrituras para commit */
+const W = {
+  poner(ruta, datos, { act = false } = {}) {
+    const w = { update: { name: RAIZ + '/' + ruta, fields: encC(datos) } };
+    if (act) w.updateTransforms = [{ fieldPath: 'act', setToServerValue: 'REQUEST_TIME' }];
+    return w;
+  },
+  cambiar(ruta, datos, campos, { act = false } = {}) {
+    const w = { update: { name: RAIZ + '/' + ruta, fields: encC(datos) }, updateMask: { fieldPaths: campos }, currentDocument: { exists: true } };
+    if (act) w.updateTransforms = [{ fieldPath: 'act', setToServerValue: 'REQUEST_TIME' }];
+    return w;
+  },
+  borrar(ruta) { return { delete: RAIZ + '/' + ruta }; }
+};
+async function confirmar(escrituras) { return fs('POST', ':commit', { writes: escrituras }); }
+
+function mensajeError(e) {
+  if (!e) return 'Algo ha fallado.';
+  const c = String(e.cod || '');
+  if (c === 'RED') return e.message;
+  if (/INVALID_LOGIN|INVALID_PASSWORD|EMAIL_NOT_FOUND|INVALID_EMAIL|CREDENTIAL/.test(c)) return 'Usuario o clave incorrectos.';
+  if (/TOO_MANY/.test(c)) return 'Demasiados intentos. Espera unos minutos y vuelve a probar.';
+  if (/USER_DISABLED/.test(c)) return 'Esta cuenta está desactivada. Habla con tu maestro.';
+  if (/PERMISSION_DENIED/.test(c) || e.estado === 403) return 'No tienes permiso para hacer esto. Si crees que es un error, avisa a tu maestro.';
+  if (/RESOURCE_EXHAUSTED/.test(c)) return 'La biblioteca ha llegado al límite de uso de hoy. Prueba mañana.';
+  if (/NOT_FOUND/.test(c) || e.estado === 404) return 'No se ha encontrado. Puede que la hayan borrado.';
+  if (/TOKEN_EXPIRED|INVALID_REFRESH|SIN_SESION/.test(c)) return 'Tu sesión ha caducado. Vuelve a entrar.';
+  return 'Algo ha fallado (' + esc(c || e.message) + '). Inténtalo de nuevo.';
+}
+
+/* =========================================================================
+   LIMPIEZA DEL TEXTO ENRIQUECIDO (solo formato permitido)
+   ========================================================================= */
+const ETIQUETAS = { P: 'p', DIV: 'div', BR: 'br', B: 'b', STRONG: 'b', I: 'i', EM: 'i', U: 'u', SPAN: 'span', FONT: 'span', H1: 'p', H2: 'p', H3: 'p', H4: 'p', H5: 'p', H6: 'p', BLOCKQUOTE: 'p', UL: 'ul', OL: 'ol', LI: 'li', CENTER: 'div' };
+const FUERA = new Set(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','IMG','SVG','VIDEO','AUDIO','META','LINK','TITLE','HEAD','NOSCRIPT','TEMPLATE','CANVAS','INPUT','BUTTON','SELECT','TEXTAREA','FORM','MATH']);
+const BLOQUES = new Set(['p','div','li']);
+const TAM_PALABRA = { 'xx-small': '0.85em', 'x-small': '0.85em', small: '0.85em', medium: '1em', large: '1.3em', 'x-large': '1.7em', 'xx-large': '2.2em', 'xxx-large': '2.2em', '-webkit-xxx-large': '2.2em' };
+const TAM_FONT = { 1: '0.85em', 2: '0.85em', 3: '1em', 4: '1.3em', 5: '1.7em', 6: '2.2em', 7: '2.2em' };
+function colorValido(c) {
+  if (!c) return null; c = c.trim().toLowerCase();
+  let r, g, b, m;
+  if ((m = c.match(/^#([0-9a-f]{3})$/))) { r = parseInt(m[1][0] + m[1][0], 16); g = parseInt(m[1][1] + m[1][1], 16); b = parseInt(m[1][2] + m[1][2], 16); }
+  else if ((m = c.match(/^#([0-9a-f]{6})$/))) { r = parseInt(m[1].slice(0, 2), 16); g = parseInt(m[1].slice(2, 4), 16); b = parseInt(m[1].slice(4), 16); }
+  else if ((m = c.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)$/))) { r = +m[1]; g = +m[2]; b = +m[3]; if (m[4] !== undefined && +m[4] < 0.5) return null; }
+  else return null;
+  if (r < 70 && g < 70 && b < 70) return null;       // negro: color normal
+  if (r > 215 && g > 215 && b > 215) return null;    // blanco: no se vería
+  return '#' + [r, g, b].map(x => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0')).join('');
+}
+function fuenteValida(f) { if (!f) return null; const n = f.toLowerCase(); const x = FUENTES.find(F => n.includes(F.k)); return x ? x.css : null; }
+function tamValido(t) {
+  if (!t) return null; t = t.trim().toLowerCase();
+  if (TAM_PALABRA[t]) return TAM_PALABRA[t];
+  const x = TAMANOS.find(T => T.v === t); return x ? x.v : null;
+}
+function limpiarEstilo(n, tag, destino) {
+  const st = n.style || {}; const out = [];
+  let color = colorValido(st.color), fam = fuenteValida(st.fontFamily), tam = tamValido(st.fontSize);
+  if (n.tagName === 'FONT') {
+    color = color || colorValido(n.getAttribute('color'));
+    fam = fam || fuenteValida(n.getAttribute('face'));
+    if (n.getAttribute('size')) tam = tam || TAM_FONT[n.getAttribute('size')] || null;
+  }
+  if (color) out.push('color:' + color);
+  if (fam) out.push('font-family:' + fam);
+  if (tam && tam !== '1em') out.push('font-size:' + tam);
+  if (destino === 'span') {
+    const fw = st.fontWeight; if (fw === 'bold' || +fw >= 600) out.push('font-weight:bold');
+    if (st.fontStyle === 'italic') out.push('font-style:italic');
+    const td = (st.textDecorationLine || st.textDecoration || ''); if (/underline/.test(td)) out.push('text-decoration:underline');
+  }
+  if (BLOQUES.has(destino)) {
+    const al = (st.textAlign || n.getAttribute('align') || '').toLowerCase();
+    if (['center', 'right', 'justify'].includes(al)) out.push('text-align:' + al);
+    if (n.tagName === 'CENTER') out.push('text-align:center');
+  }
+  return out.join(';');
+}
+function limpiarHTML(html) {
+  const doc = new DOMParser().parseFromString('<!doctype html><body>' + html, 'text/html');
+  const sal = document.createElement('div');
+  (function rec(origen, dest) {
+    for (const n of [...origen.childNodes]) {
+      if (n.nodeType === 3) { dest.appendChild(document.createTextNode(n.nodeValue.replace(/ /g, ' ').replace(/[\r\n]+/g, ' '))); continue; }
+      if (n.nodeType !== 1) continue;
+      const tag = n.tagName;
+      if (FUERA.has(tag)) continue;
+      let dst = ETIQUETAS[tag];
+      if (!dst) { rec(n, dest); continue; }
+      if (dst === 'b' && n.style && (n.style.fontWeight === 'normal' || +n.style.fontWeight < 600 && n.style.fontWeight)) dst = 'span';
+      if (dst === 'br') { dest.appendChild(document.createElement('br')); continue; }
+      const el = document.createElement(dst);
+      const estilo = limpiarEstilo(n, tag, dst);
+      if (estilo) el.setAttribute('style', estilo);
+      rec(n, el);
+      if (dst === 'span' && !estilo) { while (el.firstChild) dest.appendChild(el.firstChild); }
+      else if (dst !== 'br' && !el.childNodes.length && !BLOQUES.has(dst)) { /* vacío: fuera */ }
+      else dest.appendChild(el);
+    }
+  })(doc.body, sal);
+  // el texto suelto (fuera de párrafos) se agrupa en párrafos
+  const res = document.createElement('div'); let p = null;
+  for (const n of [...sal.childNodes]) {
+    const bloque = n.nodeType === 1 && ['P', 'DIV', 'UL', 'OL', 'LI'].includes(n.tagName);
+    if (bloque) { p = null; res.appendChild(n); continue; }
+    if (n.nodeType === 1 && n.tagName === 'BR' && p) { p.appendChild(n); p = null; continue; }
+    if (!p) { if (n.nodeType === 3 && !n.nodeValue.trim()) continue; p = document.createElement('p'); res.appendChild(p); }
+    p.appendChild(n);
+  }
+  $$('p,div', res).forEach(x => { if (x.lastChild && x.lastChild.nodeName === 'BR' && x.childNodes.length > 1) x.lastChild.remove(); });
+  return res.innerHTML;
+}
+function textoPlano(html) {
+  const d = document.createElement('div'); d.innerHTML = html.replace(/<\/(p|div|li)>|<br\s*\/?>/gi, m => m + '\n');
+  return (d.textContent || '').replace(/ /g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}
+const contarPalabras = t => (t.match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) || []).length;
+const minutosLectura = p => Math.max(1, Math.round(p / 130));
+function textoAHtml(t) { return t.replace(/\r/g, '').split(/\n{2,}|\n/).map(l => '<p>' + (esc(l.trim()) || '<br>') + '</p>').join(''); }
+
+/* =========================================================================
+   MODALES Y AVISOS (nunca alert/confirm del navegador)
+   ========================================================================= */
+let modalAbierto = null;
+function modal({ titulo = '', html = '', icono = '', botones = [{ t: 'Aceptar', v: true }], ancho = false, alAbrir, cerrable = true }) {
+  return new Promise(res => {
+    const capa = $('#capa-modal');
+    const velo = document.createElement('div'); velo.className = 'velo';
+    velo.innerHTML = `<div class="modal ${ancho ? 'ancho' : ''}" role="dialog" aria-modal="true" aria-label="${esc(titulo)}">
+      <div class="mc">${icono ? `<div class="ic-grande">${icono}</div>` : ''}${titulo ? `<h2>${esc(titulo)}</h2>` : ''}<div class="mcuerpo">${html}</div></div>
+      <div class="mb">${botones.map((b, i) => `<button class="btn ${b.c || ''}" data-i="${i}">${esc(b.t)}</button>`).join('')}</div></div>`;
+    const ant = document.activeElement;
+    const cerrar = v => { velo.remove(); modalAbierto = null; document.removeEventListener('keydown', tecla); try { ant && ant.focus && ant.focus(); } catch {} res(v); };
+    const tecla = e => { if (e.key === 'Escape' && cerrable) cerrar(null); };
+    velo.addEventListener('click', e => { if (e.target === velo && cerrable) cerrar(null); });
+    $$('.mb button', velo).forEach(b => b.addEventListener('click', async () => {
+      const bt = botones[+b.dataset.i];
+      if (bt.antes) { const ok = await bt.antes(velo); if (ok === false) return; }
+      cerrar(typeof bt.v === 'function' ? bt.v(velo) : bt.v);
+    }));
+    document.addEventListener('keydown', tecla);
+    capa.appendChild(velo);
+    modalAbierto = { cerrar: () => cerrable && cerrar(null) };
+    alAbrir && alAbrir(velo);
+    const f = $('input,textarea,select', velo) || $('.mb .btn:last-child', velo); f && f.focus();
+  });
+}
+const avisar = (titulo, texto, icono = 'ℹ️') => modal({ titulo, icono, html: `<p>${texto}</p>` });
+const preguntar = (titulo, texto, si = 'Sí', no = 'Cancelar', peligro = false, icono = '') =>
+  modal({ titulo, icono, html: `<p>${texto}</p>`, botones: [{ t: no, v: false, c: 'sec' }, { t: si, v: true, c: peligro ? 'rojo' : '' }] });
+function tostada(txt, tipo = '') {
+  const t = document.createElement('div'); t.className = 'tostada ' + tipo; t.textContent = txt;
+  $('#tostadas').appendChild(t); setTimeout(() => t.remove(), 3200);
+}
+const cargando = (txt = 'Cargando…') => `<div class="cargando"><div class="giro"></div>${esc(txt)}</div>`;
+
+/* =========================================================================
+   NAVEGACIÓN con el botón Atrás (migas de pan)
+   ========================================================================= */
+const NAV = []; let guardaSalida = null;
+function vistaActual() { return NAV[NAV.length - 1]; }
+async function puedeSalir() { if (!guardaSalida) return true; const ok = await guardaSalida(); if (ok) guardaSalida = null; return ok; }
+async function ir(vista, p = {}) {
+  if (!(await puedeSalir())) return;
+  NAV.push({ vista, p }); history.pushState({ n: NAV.length }, ''); pintar();
+}
+async function reemplazar(vista, p = {}) { NAV[NAV.length - 1] = { vista, p }; pintar(); }
+function irInicio() { if (NAV.length > 1) history.go(1 - NAV.length); else pintar(); }
+function atras() { if (NAV.length > 1) history.back(); }
+function reiniciarNav(vista) { NAV.length = 0; NAV.push({ vista, p: {} }); history.replaceState({ n: 1 }, ''); pintar(); }
+window.addEventListener('popstate', async e => {
+  const n = (e.state && e.state.n) || 1;
+  if (modalAbierto) { modalAbierto.cerrar(); history.pushState({ n: NAV.length }, ''); return; }
+  $('.menuyo') && $('.menuyo').remove();
+  if (n >= NAV.length) return;
+  if (!(await puedeSalir())) { history.pushState({ n: NAV.length }, ''); return; }
+  NAV.length = Math.max(1, n); pintar();
+});
+
+/* =========================================================================
+   COMPONENTES
+   ========================================================================= */
+function htmlEstrellas(m, grande) {
+  const p = Math.max(0, Math.min(100, m / 5 * 100));
+  return `<span class="estrellas" style="${grande ? 'font-size:1.25em' : ''}" aria-label="${nfmt(m)} de 5">★★★★★<i style="width:${p}%">★★★★★</i></span>`;
+}
+function tapa(f, { mostrarAutor = true } = {}) {
+  const color = COLORES[(f.color || 0) % COLORES.length];
+  const leido = E.yo && f.leido && f.leido[E.yo.uid] && !esMia(f);
+  return `<div class="tapa" style="--c:${color}">
+    ${leido ? '<span class="leido" title="Ya la has leído">✓</span>' : ''}
+    <span class="emo">${esc(f.emoji || '📖')}</span>
+    <span class="tt">${esc(f.titulo || 'Sin título')}</span>
+    ${mostrarAutor ? `<span class="au">${esc(f.autorNombre || '')}</span>` : ''}
+  </div>`;
+}
+function libro(f) {
+  const nv = nVotos(f), nr = nResenas(f);
+  return `<button class="libro" data-leer="${esc(f.id)}" aria-label="${esc(f.titulo)}, de ${esc(f.autorNombre)}">
+    ${tapa(f)}
+    <div class="pie">
+      ${nv ? `<span class="est">${htmlEstrellas(media(f))} ${nfmt(media(f))}</span><span>(${nv})</span>` : '<span>Sin valorar</span>'}
+      ${nr ? `<span title="Reseñas">💬 ${nr}</span>` : ''}
+      <span class="gen">${esc(f.genero || '')}${f.autorGrupo ? ' de ' + esc(f.autorGrupo) : ''}</span>
+    </div>
+  </button>`;
+}
+function enlazarLibros(raiz) { $$('[data-leer]', raiz).forEach(b => b.addEventListener('click', () => ir('leer', { id: b.dataset.leer }))); }
+
+/* =========================================================================
+   IMPRIMIR (una obra o una antología)
+   ========================================================================= */
+function imprimir(obras, titulo, portada) {
+  const cont = $('#imprimir');
+  cont.innerHTML = (portada ? `<section class="pagina portada-ant"><h1>${esc(portada.titulo)}</h1><p>${esc(portada.sub || '')}</p><p>CEIP Manuel Siurot</p></section>
+    <section class="pagina"><h2>Índice</h2><ol class="indice">${obras.map(o => `<li>${esc(o.f.titulo)}, de ${esc(o.f.autorNombre)}</li>`).join('')}</ol></section>` : '')
+    + obras.map(o => `<section class="pagina"><h2>${esc(o.f.titulo)}</h2><p class="autor">${esc(o.f.autorNombre)}${o.f.autorGrupo && o.f.autorGrupo !== 'Maestro' ? ', ' + esc(o.f.autorGrupo) : ''}</p>${o.html}</section>`).join('');
+  document.body.classList.add('imprimiendo');
+  const t = document.title; document.title = titulo || 'Biblioteca Siurot';
+  setTimeout(() => { window.print(); document.title = t; }, 300);
+}
+window.addEventListener('afterprint', () => { document.body.classList.remove('imprimiendo'); $('#imprimir').innerHTML = ''; });
+
+
+/* =========================================================================
+   ADMINISTRACIÓN — Biblioteca Siurot (solo para el maestro)
+   ========================================================================= */
+const VISTAS = {};
+E.adm = { obras: {}, alc: new Set() };   // fichas cargadas en esta sesión (no se guardan en el equipo)
+const URL_ALTA = 'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=' + FB.apiKey;
+
+function LOGO(t) {
+  return `<svg width="${t}" height="${t}" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#fff" fill-opacity=".14"/><path d="M12 17h15a7 7 0 0 1 5 2 7 7 0 0 1 5-2h15v30H37a7 7 0 0 0-5 2 7 7 0 0 0-5-2H12z" fill="#fff"/><path d="M32 19v30" stroke="#1f4e4a" stroke-width="2"/><path d="M42 17v15l3.5-2.5L49 32V17" fill="#f2b62c"/></svg>`;
+}
+const nombreCorto = n => { const p = String(n || '').trim().split(/\s+/); return p.length > 1 ? p[0] + ' ' + p[1][0].toUpperCase() + '.' : p[0] || ''; };
+const cursosPosibles = () => { const a = +cursoEscolar().slice(0, 4); return [0, 1, 2, 3, 4].map(i => (a - i) + '-' + String(a - i + 1).slice(2)); };
+const cursoActual = () => (E.cfg && E.cfg.curso) || cursoEscolar();
+const votosDe = f => Object.values(f.votos || {}).filter(n => n >= 1 && n <= 5);
+const media = f => { const v = votosDe(f); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
+const nVotos = f => votosDe(f).length;
+const nLecturas = f => Object.keys(f.leido || {}).length;
+const nResenas = f => Object.keys(f.res || {}).length;
+async function confirmarLotes(ws, n = 400) { for (let i = 0; i < ws.length; i += n) await confirmar(ws.slice(i, i + n)); }
+async function cargarConfig(forzar) {
+  if (!forzar && E.ultimaCfg) return;
+  const cfg = await leerDoc('lit_config/main').catch(() => null);
+  E.cfg = { ...CFG_DEF, ...(cfg || {}) }; E.ultimaCfg = ahora();
+}
+async function cargarUsuarios(forzar) {
+  if (E.usuarios && !forzar) return E.usuarios;
+  const q = await consultar('users');
+  E.usuarios = q.docs.map(u => ({ uid: u.id, alias: u.alias || '', nombre: u.nombre || u.alias || '?', grupo: u.grupo || '', clave: u.clave || '' }))
+    .sort((a, b) => comparaTexto(a.grupo, b.grupo) || comparaTexto(a.nombre, b.nombre));
+  return E.usuarios;
+}
+/* Obras de un alcance (ciclo + curso, o todo el ciclo). Una consulta por alcance. */
+async function cargarObras(ciclo, curso, forzar) {
+  const clave = ciclo + ':' + (curso || '*');
+  if (E.adm.alc.has(clave) && !forzar) return;
+  const donde = [['ciclo', 'EQUAL', ciclo]]; if (curso) donde.push(['curso', 'EQUAL', curso]);
+  const q = await consultar('lit_relatos', { donde });
+  for (const d of q.docs) { if (d.estado === 'borrado') delete E.adm.obras[d.id]; else E.adm.obras[d.id] = d; }
+  E.adm.alc.add(clave);
+}
+const obrasDe = (ciclo, curso) => Object.values(E.adm.obras).filter(f => f.ciclo === ciclo && (!curso || f.curso === curso));
+
+/* Escrituras para dejar una obra «borrada» (lápida: así las cachés del alumnado se enteran) */
+function escrituraBorrarObra(f) {
+  const ws = [W.cambiar('lit_relatos/' + f.id, { estado: 'borrado' }, ['estado'], { act: true }), W.cambiar('lit_textos/' + f.id, { estado: 'borrado', html: '' }, ['estado', 'html'])];
+  Object.keys(f.res || {}).forEach(u => ws.push(W.borrar('lit_resenas/' + f.id + '_' + u)));
+  return ws;
+}
+/* =========================================================================
+   PINTADO GENERAL, LOGIN
+   ========================================================================= */
+function barra() {
+  return `<header class="barra">
+    ${NAV.length > 1 ? '<button class="atras" id="b-atras" aria-label="Atrás">←</button>' : ''}
+    <button class="marca" id="b-marca" aria-label="Ir al inicio">${LOGO(34)}<span>Administración</span></button>
+    <div class="esp"></div>
+    <button class="yo" id="b-yo"><span class="ini">🚪</span><span class="nom">Salir</span></button>
+  </header>`;
+}
+async function pintar() {
+  guardaSalida = null;
+  const v = vistaActual(), app = $('#app');
+  if (v.vista === 'login') { VISTAS.login(app); return; }
+  app.innerHTML = barra() + '<main id="principal"></main>';
+  $('#b-atras') && $('#b-atras').addEventListener('click', atras);
+  $('#b-marca').addEventListener('click', irInicio);
+  $('#b-yo').addEventListener('click', salir);
+  window.scrollTo(0, 0);
+  try { await VISTAS[v.vista]($('#principal'), v.p || {}); }
+  catch (e) { console.error(e); $('#principal').innerHTML = `<div class="vacio"><p>${mensajeError(e)}</p><button class="btn" id="reint">Reintentar</button></div>`; $('#reint').onclick = () => pintar(); if (/SESION|TOKEN|REFRESH/.test(e.cod)) salir(true); }
+}
+async function salir(silencioso) {
+  if (silencioso !== true && !(await preguntar('¿Salir de la administración?', 'Se cerrará tu sesión en este dispositivo.', 'Salir'))) return;
+  if (!(await puedeSalir())) return;
+  borrarSesion(); E.ses = null; E.yo = null; E.usuarios = null; E.adm = { obras: {}, alc: new Set() };
+  reiniciarNav('login');
+}
+VISTAS.login = app => {
+  app.innerHTML = `<div class="login"><div class="caja">
+    <div class="logo">${LOGO(76)}<h1>Administración</h1><p>Biblioteca Siurot · solo para el maestro</p></div>
+    <form class="hoja" id="f-login" autocomplete="on"><div id="l-err"></div>
+      <label class="campo"><span>Correo</span><input type="email" id="l-u" autocomplete="username" autocapitalize="none" spellcheck="false" value="${esc(ls.get('correo', FB.admin))}" required></label>
+      <label class="campo"><span>Clave</span><div class="con-ojo"><input type="password" id="l-c" autocomplete="current-password" autocapitalize="none" spellcheck="false" required><button type="button" class="ojo" id="l-ojo" aria-label="Mostrar clave" aria-pressed="false" title="Mostrar u ocultar la clave">👁️</button></div></label>
+      <button class="btn" id="l-b">Entrar</button>
+    </form></div></div>`;
+  $('#l-c').focus();
+  $('#l-ojo').addEventListener('click', () => {
+    const c = $('#l-c'), o = $('#l-ojo'), ver = c.type === 'password';
+    c.type = ver ? 'text' : 'password'; o.setAttribute('aria-pressed', String(ver)); o.setAttribute('aria-label', ver ? 'Ocultar clave' : 'Mostrar clave'); o.textContent = ver ? '🙈' : '👁️'; c.focus();
+  });
+  $('#f-login').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const u = $('#l-u').value, c = $('#l-c').value, b = $('#l-b'); if (!u.trim() || !c) return;
+    b.disabled = true; b.textContent = 'Entrando…'; $('#l-err').innerHTML = '';
+    try { await entrar(u, c, false); await iniciar(); ls.set('correo', u.trim()); }
+    catch (e) { $('#l-err').innerHTML = `<div class="err">${e.cod === 'NO_ADMIN' ? esc(e.message) : mensajeError(e)}</div>`; b.disabled = false; b.textContent = 'Entrar'; borrarSesion(); E.ses = null; }
+  });
+};
+async function iniciar() {
+  if (E.ses.email !== FB.admin) { borrarSesion(); E.ses = null; throw new ErrorFB('Esta cuenta no es la del maestro administrador.', 'NO_ADMIN', 403); }
+  E.yo = { uid: E.ses.uid, nombre: 'Maestro', admin: true };
+  await cargarConfig(true);
+  reiniciarNav('inicio');
+}
+
+/* =========================================================================
+   INICIO
+   ========================================================================= */
+VISTAS.inicio = async main => {
+  main.innerHTML = cargando();
+  await cargarConfig(true).catch(() => {});
+  let avis = 0; try { avis = (await consultar('lit_resenas', { donde: [['avisada', 'EQUAL', true]] })).docs.length; } catch {}
+  const T = [
+    ['obras', '📚', 'Obras', 'Corregir, publicar, retirar o borrar. Libro en PDF.'],
+    ['alumnado', '👥', 'Alumnado', 'Altas, bajas, grupos, claves y lo que ha subido cada uno.'],
+    ['resenas', '💬', 'Reseñas avisadas', avis ? avis + (avis === 1 ? ' reseña espera' : ' reseñas esperan') + ' tu revisión.' : 'Ninguna pendiente.'],
+    ['limpieza', '🧹', 'Limpieza', 'Borrar obras antiguas con poca valoración.'],
+    ['ajustes', '⚙️', 'Ajustes', 'Escritura, valoraciones, reseñas y aviso.']
+  ];
+  main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:18px">Administración</h1>
+    <div class="panel">${T.map(([v, ic, t, d]) => `<button class="tarjeta ${v === 'resenas' && avis ? 'aviso-on' : ''}" data-ir="${v}"><span class="ic">${ic}</span><b>${t}</b><small>${d}</small></button>`).join('')}</div>`;
+  $$('[data-ir]', main).forEach(b => b.addEventListener('click', () => ir(b.dataset.ir)));
+};
+
+/* =========================================================================
+   OBRAS
+   ========================================================================= */
+VISTAS.obras = async (main, p) => {
+  const F = { ciclo: p.ciclo || E.ultCiclo || 0, curso: p.curso !== undefined ? p.curso : (E.ultCurso !== undefined ? E.ultCurso : cursoActual()), grupo: '', estado: '', q: '', orden: 'recientes' };
+  main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:14px">Obras</h1>
+    <div class="filtros">
+      <div class="chips" id="o-ciclos">${CICLOS.map(c => `<button data-c="${c.n}" class="${F.ciclo === c.n ? 'on' : ''}">${c.nombre}</button>`).join('')}</div>
+      <div class="orden">
+        <label><span class="sr">Curso</span><select id="o-curso">${cursosPosibles().map(c => `<option value="${c}" ${F.curso === c ? 'selected' : ''}>${c === cursoActual() ? 'Este curso' : 'Curso ' + c}</option>`).join('')}<option value="" ${F.curso === '' ? 'selected' : ''}>Todos los cursos</option></select></label>
+        <label><span class="sr">Estado</span><select id="o-estado"><option value="">Publicadas y borradores</option><option value="publicado">Solo publicadas</option><option value="borrador">Solo borradores</option></select></label>
+        <label><span class="sr">Orden</span><select id="o-orden"><option value="recientes">Más recientes</option><option value="valoradas">Mejor valoradas</option><option value="peores">Peor valoradas</option><option value="autor">Autor (A-Z)</option></select></label>
+      </div>
+      <div class="chips" id="o-grupos"></div>
+      <label class="busca"><span class="sr">Buscar</span><input type="search" id="o-q" placeholder="Buscar por título o autor"></label>
+    </div>
+    <div class="fila" style="justify-content:space-between;margin:10px 0"><p class="contador" id="o-cont" style="margin:0"></p>
+      <span class="fila"><button class="btn peq sec" id="o-act">↻ Actualizar</button><button class="btn peq sec" id="o-ant" title="Reúne las obras publicadas que ves en un libro con portada e índice, listo para imprimir o guardar como PDF">📖 Libro en PDF</button></span></div>
+    <div id="o-lista"></div>`;
+  const ver = () => obrasDe(F.ciclo, F.curso);
+  const pintarGrupos = () => {
+    const gs = [...new Set(ver().map(f => f.autorGrupo).filter(Boolean))].sort(comparaTexto); if (F.grupo && !gs.includes(F.grupo)) F.grupo = '';
+    $('#o-grupos').innerHTML = gs.length > 1 ? `<button data-g="" class="${!F.grupo ? 'on' : ''}">Todos</button>` + gs.map(g => `<button data-g="${esc(g)}" class="${F.grupo === g ? 'on' : ''}">${esc(g)}</button>`).join('') : '';
+  };
+  const filtradas = () => {
+    const q = normal(F.q.trim());
+    const l = ver().filter(f => (!F.grupo || f.autorGrupo === F.grupo) && (!F.estado || f.estado === F.estado) && (!q || normal(f.titulo + ' ' + f.autorNombre).includes(q)));
+    const pun = f => nVotos(f) ? media(f) : 99;
+    l.sort({ recientes: (a, b) => (b.creado || 0) - (a.creado || 0), valoradas: (a, b) => media(b) - media(a) || nVotos(b) - nVotos(a), peores: (a, b) => pun(a) - pun(b), autor: (a, b) => comparaTexto(a.autorNombre, b.autorNombre) || comparaTexto(a.titulo, b.titulo) }[F.orden]);
+    return l;
+  };
+  const pintarLista = () => {
+    const l = filtradas();
+    $('#o-cont').textContent = l.length + (l.length === 1 ? ' obra' : ' obras');
+    $('#o-lista').innerHTML = l.length ? `<div class="tabla-wrap"><table><thead><tr><th>Título</th><th>Autor</th><th>Estado</th><th class="num">Nota</th><th class="num">Lecturas</th><th></th></tr></thead><tbody>${l.map(f => `<tr>
+      <td><b>${esc(f.titulo)}</b><br><small style="color:var(--gris)">${esc(f.genero || '')} · ${f.curso || ''}</small></td>
+      <td><a href="#" data-autor="${esc(f.autorUid)}">${esc(f.autorNombre)}</a><br><small style="color:var(--gris)">${esc(f.autorGrupo || '')}</small></td>
+      <td><span class="chip ${f.estado}">${f.estado === 'publicado' ? 'Publicada' : 'Borrador'}</span></td>
+      <td class="num">${nVotos(f) ? nfmt(media(f)) + ' (' + nVotos(f) + ')' : '—'}</td><td class="num">${nLecturas(f)}</td>
+      <td style="white-space:nowrap"><button class="btn peq" data-corr="${esc(f.id)}">Corregir</button> <button class="btn peq sec" data-est="${esc(f.id)}">${f.estado === 'publicado' ? 'Retirar' : 'Publicar'}</button> <button class="btn peq txt" data-del="${esc(f.id)}" aria-label="Borrar">🗑️</button></td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="vacio"><p>No hay obras con estos filtros.</p></div>';
+  };
+  async function cambiar(forzar) {
+    E.ultCiclo = F.ciclo; E.ultCurso = F.curso;
+    if (!F.ciclo) { $('#o-lista').innerHTML = '<div class="vacio"><p>Elige un ciclo para ver sus obras.</p></div>'; $('#o-cont').textContent = ''; pintarGrupos(); return; }
+    $('#o-lista').innerHTML = cargando();
+    try { await cargarObras(F.ciclo, F.curso, forzar); } catch (e) { tostada(mensajeError(e), 'mal'); }
+    pintarGrupos(); pintarLista();
+  }
+  $('#o-ciclos').onclick = e => { const b = e.target.closest('button'); if (!b) return; F.ciclo = +b.dataset.c; $$('#o-ciclos button').forEach(x => x.classList.toggle('on', x === b)); cambiar(); };
+  $('#o-curso').onchange = e => { F.curso = e.target.value; cambiar(); };
+  $('#o-estado').onchange = e => { F.estado = e.target.value; pintarLista(); };
+  $('#o-orden').onchange = e => { F.orden = e.target.value; pintarLista(); };
+  $('#o-q').oninput = e => { F.q = e.target.value; pintarLista(); };
+  $('#o-grupos').onclick = e => { const b = e.target.closest('button'); if (!b) return; F.grupo = b.dataset.g; $$('#o-grupos button').forEach(x => x.classList.toggle('on', x === b)); pintarLista(); };
+  $('#o-act').onclick = () => cambiar(true);
+  $('#o-ant').onclick = async () => {
+    const l = filtradas().filter(f => f.estado === 'publicado').sort((a, b) => comparaTexto(a.autorNombre, b.autorNombre));
+    if (!l.length) return avisar('Nada que reunir', 'No hay obras publicadas con estos filtros.', '📖');
+    if (l.length > 60) return avisar('Demasiadas obras', 'Un libro admite hasta 60 obras. Filtra por grupo.', '🖨️');
+    if (!(await preguntar('¿Preparar el libro?', `Se reunirán ${l.length} obras en un libro con portada e índice. Se abrirá la impresión: elige «Guardar como PDF» o imprímelo.`, 'Preparar'))) return;
+    try {
+      const obras = []; for (const f of l) { const t = await leerDoc('lit_textos/' + f.id); obras.push({ f, html: limpiarHTML(t ? t.html : '') }); }
+      imprimir(obras, 'Antología ' + nombreCiclo(F.ciclo), { titulo: 'Antología de la Biblioteca Siurot', sub: nombreCiclo(F.ciclo) + (F.curso ? ' · curso ' + F.curso : '') + (F.grupo ? ' · ' + F.grupo : '') });
+    } catch (e) { avisar('No se ha podido preparar', mensajeError(e), '⚠️'); }
+  };
+  $('#o-lista').onclick = async e => {
+    const a = e.target.closest('a[data-autor]'); if (a) { e.preventDefault(); return ir('alumno', { uid: a.dataset.autor }); }
+    const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+    if (d.corr) return ir('corregir', { id: d.corr });
+    const f = E.adm.obras[d.est || d.del]; if (!f) return;
+    try {
+      if (d.est) {
+        const est = f.estado === 'publicado' ? 'borrador' : 'publicado';
+        await confirmar([W.cambiar('lit_relatos/' + f.id, { estado: est, publicado: f.publicado || ahora() }, ['estado', 'publicado'], { act: true }), W.cambiar('lit_textos/' + f.id, { estado: est }, ['estado'])]);
+        f.estado = est; f.publicado = f.publicado || ahora(); tostada(est === 'publicado' ? 'Obra publicada' : 'Obra retirada (borrador)', 'ok'); pintarLista();
+      } else if (d.del) {
+        if (!(await preguntar('¿Borrar esta obra?', `«${esc(f.titulo)}» de ${esc(f.autorNombre)} desaparecerá con sus votos y reseñas. No se puede deshacer.`, 'Borrar', 'Cancelar', true, '🗑️'))) return;
+        await confirmar(escrituraBorrarObra(f)); delete E.adm.obras[f.id]; tostada('Obra borrada'); pintarGrupos(); pintarLista();
+      }
+    } catch (er) { avisar('No se ha podido hacer', mensajeError(er), '⚠️'); }
+  };
+  await cambiar();
+};
+
+/* =========================================================================
+   CORREGIR UNA OBRA
+   ========================================================================= */
+VISTAS.corregir = async (main, p) => {
+  main.innerHTML = cargando('Abriendo la obra…');
+  const f0 = E.adm.obras[p.id] || await leerDoc('lit_relatos/' + p.id);
+  if (!f0 || f0.estado === 'borrado') { main.innerHTML = '<div class="vacio"><p>Esta obra ya no existe.</p></div>'; return; }
+  const f = f0;
+  const [t, rs] = await Promise.all([leerDoc('lit_textos/' + p.id), consultar('lit_resenas', { donde: [['relatoId', 'EQUAL', p.id]] })]);
+  let reseñas = rs.docs.sort((a, b) => (b.fecha || 0) - (a.fecha || 0));
+  main.innerHTML = `<div class="estrecho">
+    <h1 style="font-size:1.9rem;margin-bottom:4px">Corregir obra</h1>
+    <p style="margin:0 0 14px;color:var(--gris)">de ${esc(f.autorNombre)}, ${esc(f.autorGrupo || '')} · curso ${esc(f.curso || '')}. Los cambios se ven en la biblioteca al guardar.</p>
+    <label class="campo"><span>Título</span><input type="text" id="c-tit" class="titulo-in" maxlength="100" value="${esc(f.titulo)}"></label>
+    <div class="grid2">
+      <label class="campo"><span>Tipo de texto</span><select id="c-gen">${GENEROS.map(g => `<option ${g === f.genero ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
+      <label class="campo"><span>Estado</span><select id="c-est"><option value="publicado" ${f.estado === 'publicado' ? 'selected' : ''}>Publicada</option><option value="borrador" ${f.estado !== 'publicado' ? 'selected' : ''}>Borrador</option></select></label>
+    </div>
+    <div class="toolbar" id="tb" role="toolbar" aria-label="Formato del texto">
+      <button class="tb" data-c="bold" title="Negrita"><b>N</b></button><button class="tb" data-c="italic" title="Cursiva"><i style="font-family:Georgia">K</i></button><button class="tb" data-c="underline" title="Subrayado"><u>S</u></button>
+      <span class="sep"></span>
+      <select id="tb-fu" aria-label="Tipo de letra">${FUENTES.map(F => `<option value="${F.id}">${F.n}</option>`).join('')}</select>
+      <select id="tb-ta" aria-label="Tamaño">${TAMANOS.map(T => `<option value="${T.v}">${T.n}</option>`).join('')}</select>
+      <select id="tb-co" aria-label="Color"><option value="">Color</option>${COLORES_TEXTO.map(c => `<option value="${c}" style="color:${c}">■ ${c}</option>`).join('')}<option value="normal">Normal</option></select>
+      <span class="sep"></span>
+      <button class="tb" data-c="justifyLeft" title="Izquierda">⇤</button><button class="tb" data-c="justifyCenter" title="Centrar">↔</button><button class="tb" data-c="justifyFull" title="Justificar">☰</button>
+      <span class="sep"></span>
+      <button class="tb" data-c="undo" title="Deshacer">↶</button><button class="tb" data-c="redo" title="Rehacer">↷</button><button class="tb" data-c="removeFormat" title="Quitar formato">✖</button>
+    </div>
+    <div class="hoja-editor" id="ed" contenteditable="true" spellcheck="true" lang="es"></div>
+    <div class="editor-pie"><span id="c-cuenta">0 palabras</span></div>
+    <div class="botonera"><button class="btn amar" id="c-guardar">Guardar corrección</button></div>
+    <section class="seccion"><h2>💬 Reseñas de esta obra (${reseñas.length})</h2><div id="c-res"></div></section>
+  </div>`;
+  const ed = $('#ed'); ed.innerHTML = limpiarHTML(t ? t.html : '') || '<p><br></p>';
+  document.execCommand('defaultParagraphSeparator', false, 'p');
+  const html0 = ed.innerHTML; let meta0 = JSON.stringify([f.titulo, f.genero, f.estado]); let rango = null, ocupado = false;
+  const cuenta = () => { const n = contarPalabras(textoPlano(ed.innerHTML)); $('#c-cuenta').textContent = n + (n === 1 ? ' palabra' : ' palabras'); };
+  cuenta(); ed.addEventListener('input', cuenta);
+  document.addEventListener('selectionchange', function g() { if (!document.body.contains(ed)) { document.removeEventListener('selectionchange', g); return; } const s = getSelection(); if (s.rangeCount && ed.contains(s.anchorNode)) rango = s.getRangeAt(0).cloneRange(); });
+  const restaurar = () => { ed.focus(); if (rango) { const s = getSelection(); s.removeAllRanges(); s.addRange(rango); } };
+  const orden = (c, v) => { restaurar(); document.execCommand('styleWithCSS', false, true); document.execCommand(c, false, v); cuenta(); };
+  $$('#tb [data-c]').forEach(b => { b.addEventListener('mousedown', e => e.preventDefault()); b.addEventListener('click', () => orden(b.dataset.c)); });
+  $('#tb-fu').onchange = e => { const F = FUENTES.find(x => x.id === e.target.value); orden('fontName', F.css.split(',')[0].replace(/'/g, '')); };
+  $('#tb-co').onchange = e => { if (e.target.value) orden('foreColor', e.target.value === 'normal' ? '#1d2a2e' : e.target.value); e.target.value = ''; };
+  $('#tb-ta').onchange = e => {
+    const v = e.target.value; restaurar(); document.execCommand('styleWithCSS', false, true); document.execCommand('fontSize', false, '7');
+    $$('font[size="7"]', ed).forEach(x => { const s = document.createElement('span'); s.style.fontSize = v; while (x.firstChild) s.appendChild(x.firstChild); x.replaceWith(s); });
+    $$('span', ed).forEach(s => { if (/xxx-large/.test(s.style.fontSize)) { if (v === '1em') s.style.removeProperty('font-size'); else s.style.fontSize = v; } }); cuenta();
+  };
+  ed.addEventListener('paste', e => { e.preventDefault(); const cd = e.clipboardData; const h = cd.getData('text/html'); document.execCommand('insertHTML', false, h ? limpiarHTML(h) : textoAHtml(cd.getData('text/plain'))); cuenta(); });
+  async function guardar() {
+    if (ocupado) return false;
+    const titulo = $('#c-tit').value.trim(), limpio = limpiarHTML(ed.innerHTML), plano = textoPlano(limpio);
+    if (!titulo) { avisar('Falta el título', 'La obra necesita un título.', '🏷️'); return false; }
+    if (!plano) { avisar('Texto vacío', 'La obra no puede quedarse sin texto. Si quieres quitarla, usa «Retirar» o «Borrar» en la lista.', '📄'); return false; }
+    if (limpio.length > 300000) { avisar('Obra demasiado larga', 'El texto supera el tamaño permitido.', '📏'); return false; }
+    ocupado = true;
+    try {
+      const est = $('#c-est').value;
+      const datos = { titulo: titulo.slice(0, 100), genero: $('#c-gen').value, estado: est, palabras: contarPalabras(plano), extracto: plano.replace(/\s+/g, ' ').slice(0, 300), ver: (f.ver || 0) + 1, publicado: f.publicado || (est === 'publicado' ? ahora() : 0) };
+      await confirmar([W.cambiar('lit_relatos/' + f.id, datos, Object.keys(datos), { act: true }), W.cambiar('lit_textos/' + f.id, { html: limpio, estado: est }, ['html', 'estado'])]);
+      Object.assign(f, datos); E.adm.obras[f.id] = f; meta0 = JSON.stringify([$('#c-tit').value, $('#c-gen').value, $('#c-est').value]);
+      return true;
+    } catch (e) { avisar('No se ha podido guardar', mensajeError(e), '⚠️'); return false; } finally { ocupado = false; }
+  }
+  let html1 = html0; const hc = () => ed.innerHTML !== html1 || JSON.stringify([$('#c-tit').value, $('#c-gen').value, $('#c-est').value]) !== meta0;
+  $('#c-guardar').onclick = async () => { if (await guardar()) { html1 = ed.innerHTML; tostada('Corrección guardada', 'ok'); } };
+  guardaSalida = async () => {
+    if (!hc()) return true;
+    const r = await modal({ titulo: 'Tienes cambios sin guardar', icono: '💾', html: '<p>Si sales ahora, la corrección se pierde.</p>', botones: [{ t: 'Seguir corrigiendo', v: 'seguir', c: 'sec' }, { t: 'Salir sin guardar', v: 'salir', c: 'sec' }, { t: 'Guardar y salir', v: 'guardar' }] });
+    if (r === 'salir') return true; if (r === 'guardar') return guardar(); return false;
+  };
+  const pintarRes = () => {
+    $('#c-res').innerHTML = reseñas.length ? `<div class="resenas">${reseñas.map(r => `<article class="resena ${r.avisada ? 'avisada' : ''}"><div class="cab"><span class="av" style="background:${colorPersona(r.autorUid)}">${esc(iniciales(r.nombre))}</span>
+      <span class="quien"><b>${esc(r.nombre)}</b><small>${esc(r.grupo || '')}${r.fecha ? ', ' + haceTiempo(r.fecha) : ''}</small></span>${r.estrellas ? htmlEstrellas(r.estrellas) : ''}</div>
+      <p>${esc(r.texto)}</p><div class="acts">${r.avisada ? '<span class="chip revisar">🚩 Avisada</span>' : ''}<button class="btn txt peq" data-del="${esc(r.id)}">🗑️ Borrar</button></div></article>`).join('')}</div>` : '<div class="vacio"><p>Esta obra no tiene reseñas.</p></div>';
+  };
+  pintarRes();
+  $('#c-res').onclick = async e => {
+    const b = e.target.closest('[data-del]'); if (!b) return; const r = reseñas.find(x => x.id === b.dataset.del); if (!r) return;
+    if (!(await preguntar('¿Borrar la reseña?', `Se borrará la reseña de ${esc(r.nombre)}. Su voto en estrellas se mantiene.`, 'Borrar', 'Cancelar', true))) return;
+    try { await confirmar([W.borrar('lit_resenas/' + r.id), W.cambiar('lit_relatos/' + f.id, { res: {} }, [campoMapa('res', r.autorUid)], { act: true })]); reseñas = reseñas.filter(x => x !== r); delete (f.res || {})[r.autorUid]; tostada('Reseña borrada'); pintarRes(); }
+    catch (er) { avisar('No se ha podido borrar', mensajeError(er), '⚠️'); }
+  };
+};
+
+/* =========================================================================
+   ALUMNADO
+   ========================================================================= */
+/* Clave: tres cifras y tres letras, en minúsculas (sin letras ni cifras que se confunden: l, i, o, 0, 1) */
+const claveNueva = () => { const L = 'abcdefghjkmnpqrstuvwxyz', N = '23456789', r = s => s[Math.floor(Math.random() * s.length)]; return r(N) + r(N) + r(N) + r(L) + r(L) + r(L); };
+function aliasLibre(nombre, ocupados) {
+  const p = String(nombre).trim().split(/\s+/);
+  const base = (normal(p[0]).replace(/[^a-z0-9]/g, '') + (p[1] ? normal(p[1]).replace(/[^a-z0-9]/g, '').charAt(0) : '')) || 'alumno';
+  let a = base, n = 2; while (ocupados.has(a)) a = base + n++;
+  ocupados.add(a); return a;
+}
+/* Crea la cuenta (o reutiliza la de Ajedrez si ya existe con esa clave) y su ficha en users/ */
+async function altaAlumno({ nombre, grupo, alias, clave }) {
+  const email = alias + '@' + FB.dominio; let uid, existente = false;
+  const cab = { 'Content-Type': 'application/json' };
+  try { uid = (await pedir(URL_ALTA, { method: 'POST', headers: cab, body: JSON.stringify({ email, password: clave, returnSecureToken: false }) })).localId; }
+  catch (e) {
+    if (!/EMAIL_EXISTS/.test(e.message + e.cod)) throw e;
+    try { uid = (await pedir(URL_AUTH, { method: 'POST', headers: cab, body: JSON.stringify({ email, password: clave, returnSecureToken: true }) })).localId; existente = true; }
+    catch { throw new ErrorFB('El usuario «' + alias + '» ya existe (por ejemplo en Ajedrez) con otra clave. Usa otro usuario o la clave que ya tiene.', 'YA_EXISTE', 400); }
+  }
+  await confirmar([W.poner('users/' + uid, { alias, nombre, grupo, clave, creado: ahora() })]);
+  const u = { uid, alias, nombre, grupo, clave }; E.usuarios.push(u);
+  return { ...u, existente };
+}
+/* Clave en tipografía de máquina de escribir; cifras en negrita y separadas de las letras para no confundir l con 1 */
+const claveVisible = c => { const m = /^(\d+)([a-z]+)$/i.exec(c || ''); return m ? `<b class="cf">${esc(m[1])}</b><span class="cg"></span><span class="cl-l">${esc(m[2])}</span>` : esc(c); };
+function imprimirClaves(l, titulo) {
+  $('#imprimir').innerHTML = `<section class="pagina"><h2>${esc(titulo)}</h2><div class="tarjetas">${l.map(u => `<div class="tarj"><b>${esc(u.nombre)}</b><span>${esc(u.grupo)}</span><p>Usuario: <code>${esc(u.alias)}</code></p><p>Clave: <code class="cl">${claveVisible(u.clave)}</code></p></div>`).join('')}</div></section>`;
+  document.body.classList.add('imprimiendo'); setTimeout(() => window.print(), 300);
+}
+async function darDeBaja(u, borrarObras) {
+  const ws = [];
+  if (borrarObras) { const q = await consultar('lit_relatos', { donde: [['autorUid', 'EQUAL', u.uid]] }); q.docs.filter(f => f.estado !== 'borrado').forEach(f => { ws.push(...escrituraBorrarObra(f)); delete E.adm.obras[f.id]; }); }
+  ws.push(W.poner('lit_bajas/' + u.uid, { alias: u.alias, nombre: u.nombre, grupo: u.grupo, clave: u.clave, baja: ahora(), curso: cursoActual() }), W.borrar('users/' + u.uid));
+  await confirmarLotes(ws); E.usuarios = E.usuarios.filter(x => x.uid !== u.uid);
+}
+const tablaClaves = l => `<div class="tabla-wrap" style="max-height:40vh"><table><thead><tr><th>Alumno</th><th>Grupo</th><th>Usuario</th><th>Clave</th></tr></thead><tbody>${l.map(u => `<tr><td>${esc(u.nombre)}</td><td>${esc(u.grupo)}</td><td><code>${esc(u.alias)}</code></td><td><code class="cl">${claveVisible(u.clave)}</code></td></tr>`).join('')}</tbody></table></div>`;
+
+VISTAS.alumnado = async (main, p) => {
+  main.innerHTML = cargando('Cargando alumnado…');
+  try { await cargarUsuarios(p.recargar); } catch (e) { main.innerHTML = `<div class="vacio"><p>${mensajeError(e)}</p></div>`; return; }
+  const S = { grupo: ls.get('admGrupo', ''), q: '', claves: false, pestana: 'activos', bajas: null };
+  main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:14px">Alumnado</h1>
+    <nav class="tabs"><button data-p="activos" class="on">Activos</button><button data-p="bajas">De baja</button></nav>
+    <div class="fila" style="margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn amar" id="a-nuevo">➕ Nuevo alumno</button><button class="btn sec" id="a-grupo">📋 Alta de un grupo</button><button class="btn sec" id="a-subir">⬆️ Subir de curso</button>
+      <button class="btn sec" id="a-imp">🖨️ Imprimir claves</button><button class="btn sec" id="a-csv">⬇️ CSV</button><button class="btn sec" id="a-rec" title="Volver a leer la lista">↻</button></div>
+    <div class="fila" style="margin-bottom:10px;flex-wrap:wrap"><select id="a-g" style="max-width:240px"></select>
+      <label class="busca" style="flex:1;min-width:200px"><span class="sr">Buscar</span><input type="search" id="a-q" placeholder="Buscar alumno"></label>
+      <label class="check"><input type="checkbox" id="a-claves"> <span>Mostrar claves</span></label></div>
+    <p class="contador" id="a-cont"></p><div id="a-tab"></div>`;
+  const grupos = () => [...new Set(E.usuarios.map(u => u.grupo).filter(Boolean))].sort(comparaTexto);
+  const lista = () => { const q = normal(S.q.trim()); return E.usuarios.filter(u => (!S.grupo || u.grupo === S.grupo) && (!q || normal(u.nombre + ' ' + u.alias).includes(q))); };
+  const pintarSel = () => { const gs = grupos(); if (S.grupo && !gs.includes(S.grupo)) S.grupo = ''; $('#a-g').innerHTML = '<option value="">Todos los grupos</option>' + gs.map(g => `<option ${g === S.grupo ? 'selected' : ''}>${esc(g)}</option>`).join(''); };
+  const pintar = () => {
+    if (S.pestana === 'bajas') {
+      const l = S.bajas || [];
+      $('#a-cont').textContent = l.length + (l.length === 1 ? ' alumno de baja' : ' alumnos de baja');
+      $('#a-tab').innerHTML = l.length ? `<div class="tabla-wrap"><table><thead><tr><th>Alumno</th><th>Último grupo</th><th>Baja</th><th></th></tr></thead><tbody>${l.map(u => `<tr><td>${esc(u.nombre)}</td><td>${esc(u.grupo)}</td><td>${fecha(u.baja)}</td><td><button class="btn peq sec" data-reac="${esc(u.id)}">Reactivar</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="vacio"><p>No hay alumnado de baja.</p></div>';
+      return;
+    }
+    const l = lista();
+    $('#a-cont').textContent = l.length + (l.length === 1 ? ' alumno' : ' alumnos');
+    $('#a-tab').innerHTML = l.length ? `<div class="tabla-wrap"><table><thead><tr><th>Alumno</th><th>Grupo</th><th>Usuario</th>${S.claves ? '<th>Clave</th>' : ''}<th></th></tr></thead><tbody>${l.map(u => `<tr>
+      <td><a href="#" data-ver="${esc(u.uid)}">${esc(u.nombre)}</a></td><td>${esc(u.grupo)}</td><td><code>${esc(u.alias)}</code></td>${S.claves ? `<td><code class="cl">${claveVisible(u.clave)}</code></td>` : ''}
+      <td style="white-space:nowrap"><button class="btn peq" data-ver="${esc(u.uid)}">Obras</button> <button class="btn peq sec" data-edit="${esc(u.uid)}">Editar</button> <button class="btn peq sec" data-baja="${esc(u.uid)}">Baja</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="vacio"><p>No hay alumnado con estos filtros.</p></div>';
+  };
+  pintarSel(); pintar();
+  const refrescar = () => { pintarSel(); pintar(); };
+
+  main.querySelector('.tabs').onclick = async e => {
+    const b = e.target.closest('button'); if (!b) return; S.pestana = b.dataset.p; $$('.tabs button', main).forEach(x => x.classList.toggle('on', x === b));
+    if (S.pestana === 'bajas' && !S.bajas) { $('#a-tab').innerHTML = cargando(); try { S.bajas = (await consultar('lit_bajas')).docs.sort((a, b) => (b.baja || 0) - (a.baja || 0)); } catch (er) { S.bajas = []; tostada(mensajeError(er), 'mal'); } }
+    pintar();
+  };
+  $('#a-g').onchange = e => { S.grupo = e.target.value; ls.set('admGrupo', S.grupo); pintar(); };
+  $('#a-q').oninput = e => { S.q = e.target.value; pintar(); };
+  $('#a-claves').onchange = e => { S.claves = e.target.checked; pintar(); };
+  $('#a-rec').onclick = () => reemplazar('alumnado', { recargar: true });
+  $('#a-imp').onclick = () => { const l = lista(); if (!l.length) return; imprimirClaves(l, 'Usuarios y claves' + (S.grupo ? ' · ' + S.grupo : '')); };
+  $('#a-csv').onclick = () => {
+    const csv = ['Nombre;Grupo;Usuario;Clave', ...lista().map(u => [u.nombre, u.grupo, u.alias, u.clave].map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';'))].join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })); a.download = 'alumnado' + (S.grupo ? '-' + S.grupo.replace(/\W+/g, '') : '') + '.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+
+  /* alta individual */
+  $('#a-nuevo').onclick = async () => {
+    const gs = grupos();
+    const d = await modal({
+      titulo: 'Nuevo alumno', icono: '➕', ancho: true,
+      html: `<label class="campo"><span>Nombre (como se verá: «Lucía M.»)</span><input type="text" id="n-nom" maxlength="40" placeholder="Lucía Martín"></label>
+        <label class="campo"><span>Grupo</span><input type="text" id="n-gru" list="n-gl" maxlength="10" placeholder="4ºA" value="${esc(S.grupo)}"><datalist id="n-gl">${gs.map(g => `<option value="${esc(g)}">`).join('')}</datalist></label>
+        <div class="grid2"><label class="campo"><span>Usuario</span><input type="text" id="n-ali" autocapitalize="none" spellcheck="false"></label>
+        <label class="campo"><span>Clave (mín. 6)</span><input type="text" id="n-cla" value="${claveNueva()}" autocapitalize="none" spellcheck="false"></label></div>`,
+      alAbrir: v => { const nom = $('#n-nom', v), ali = $('#n-ali', v); let tocado = false; ali.oninput = () => tocado = true; nom.oninput = () => { if (!tocado) ali.value = nom.value.trim() ? aliasLibre(nom.value, new Set(E.usuarios.map(u => u.alias))) : ''; }; },
+      botones: [{ t: 'Cancelar', v: null, c: 'sec' }, { t: 'Crear', v: v => ({ nombre: $('#n-nom', v).value.trim(), grupo: $('#n-gru', v).value.trim(), alias: normal($('#n-ali', v).value.trim()).replace(/[^a-z0-9]/g, ''), clave: $('#n-cla', v).value.trim().toLowerCase() }),
+        antes: v => { const nom = $('#n-nom', v).value.trim(), g = $('#n-gru', v).value.trim(), al = normal($('#n-ali', v).value.trim()), cl = $('#n-cla', v).value.trim();
+          const err = !nom ? 'Escribe el nombre.' : !/^[1-6]/.test(g) ? 'El grupo debe empezar por el curso: 4ºA, 6ºB…' : !al ? 'Falta el usuario.' : cl.length < 6 ? 'La clave necesita al menos 6 caracteres.' : E.usuarios.some(u => u.alias === al) ? 'Ese usuario ya existe.' : '';
+          if (err) { tostada(err, 'mal'); return false; } } }]
+    });
+    if (!d) return;
+    try { const r = await altaAlumno(d); tostada(r.existente ? 'Alumno dado de alta (ya tenía cuenta de Ajedrez)' : 'Alumno creado', 'ok'); S.grupo = d.grupo; refrescar();
+      if (await modal({ titulo: 'Usuario y clave', icono: '🔑', html: tablaClaves([r]), botones: [{ t: 'Cerrar', v: false, c: 'sec' }, { t: '🖨️ Imprimir', v: true }] })) imprimirClaves([r], 'Usuario y clave'); }
+    catch (e) { avisar('No se ha podido crear', mensajeError(e), '⚠️'); }
+  };
+  /* alta de un grupo entero */
+  $('#a-grupo').onclick = async () => {
+    const d = await modal({
+      titulo: 'Alta de un grupo', icono: '📋', ancho: true,
+      html: `<label class="campo"><span>Grupo</span><input type="text" id="g-gru" maxlength="10" placeholder="3ºA" value="${esc(S.grupo)}"></label>
+        <label class="campo"><span>Un alumno por línea: nombre completo</span><textarea id="g-lis" rows="10" placeholder="Lucía Martín Pérez&#10;Pablo Ruiz Gil;abc123&#10;Ana García López"></textarea></label>
+        <p class="nota">Se crea el usuario (nombre + inicial del primer apellido) y una clave de tres cifras y tres letras. Si el alumno ya tiene clave (por ejemplo la de Ajedrez), escribe «nombre;clave;usuario» y se respetan. Quien ya esté dado de alta se salta.</p>`,
+      botones: [{ t: 'Cancelar', v: null, c: 'sec' }, { t: 'Crear alumnado', v: v => ({ grupo: $('#g-gru', v).value.trim(), nombres: $('#g-lis', v).value.split(/\n/).map(s => s.trim()).filter(Boolean).map(s => { const [n, c, u] = s.split(';'); return { nombre: n.trim(), clave: (c || '').trim().toLowerCase(), alias: normal((u || '').trim()).replace(/[^a-z0-9]/g, '') }; }) }),
+        antes: v => { if (!/^[1-6]/.test($('#g-gru', v).value.trim())) { tostada('El grupo debe empezar por el curso: 3ºA…', 'mal'); return false; } if (!$('#g-lis', v).value.trim()) { tostada('Escribe al menos un nombre', 'mal'); return false; } } }]
+    });
+    if (!d) return;
+    const ocup = new Set(E.usuarios.map(u => u.alias)), hechos = [], fallos = [];
+    d.nombres.forEach(x => { if (x.alias) ocup.add(x.alias); });
+    const barraProg = $('#principal'); const aviso = document.createElement('div'); aviso.className = 'tostada'; aviso.style.position = 'fixed'; document.body.appendChild(aviso);
+    for (let i = 0; i < d.nombres.length; i++) {
+      aviso.textContent = `Creando ${i + 1} de ${d.nombres.length}…`;
+      const { nombre, clave, alias: aliasDado } = d.nombres[i];
+      const ya = E.usuarios.find(u => normal(u.nombre) === normal(nombre));
+      if (ya) { fallos.push(nombre + ': ya estaba dado de alta (' + ya.alias + ', ' + ya.grupo + ')'); continue; }
+      if (clave && clave.length < 6) { fallos.push(nombre + ': la clave necesita al menos 6 caracteres'); continue; }
+      try { hechos.push(await altaAlumno({ nombre, grupo: d.grupo, alias: aliasDado || aliasLibre(nombre, ocup), clave: clave || claveNueva() })); } catch (e) { fallos.push(nombre + ': ' + mensajeError(e)); }
+    }
+    aviso.remove(); S.grupo = d.grupo; refrescar();
+    const r = await modal({ titulo: hechos.length + (hechos.length === 1 ? ' alumno creado' : ' alumnos creados'), icono: '🔑', ancho: true, html: (hechos.length ? tablaClaves(hechos) : '') + (fallos.length ? `<p class="err" style="margin-top:10px">${fallos.map(esc).join('<br>')}</p>` : ''), botones: [{ t: 'Cerrar', v: false, c: 'sec' }, ...(hechos.length ? [{ t: '🖨️ Imprimir tarjetas', v: true }] : [])] });
+    if (r) imprimirClaves(hechos, 'Usuarios y claves · ' + d.grupo);
+  };
+  /* subir de curso */
+  $('#a-subir').onclick = async () => {
+    const ws = []; const sube = [], baja = [];
+    E.usuarios.forEach(u => { const m = String(u.grupo).match(/^([1-6])(.*)$/); if (!m) return; if (m[1] === '6') baja.push(u); else sube.push({ u, nuevo: (+m[1] + 1) + m[2] }); });
+    const resumen = {}; sube.forEach(s => { const k = s.u.grupo + ' → ' + s.nuevo; resumen[k] = (resumen[k] || 0) + 1; });
+    const r = await modal({ titulo: 'Subir de curso', icono: '⬆️', ancho: true,
+      html: `<p>Pasa a todo el alumnado al curso siguiente. Hazlo cuando empiece el curso nuevo.</p>
+        <ul style="line-height:1.7;margin:0 0 10px;padding-left:20px">${Object.entries(resumen).sort().map(([k, n]) => `<li><b>${esc(k)}</b>: ${n}</li>`).join('') || '<li>Nadie sube de grupo.</li>'}</ul>
+        <label class="check" style="margin:8px 0"><input type="checkbox" id="s-baja" checked> <span>Dar de baja a ${baja.length} ${baja.length === 1 ? 'alumno' : 'alumnos'} de 6º (se van del colegio)</span></label>
+        <p class="nota">Las obras ya publicadas se quedan en su ciclo como obras del curso que termina. El curso escolar cambia solo cada 1 de septiembre.</p>`,
+      botones: [{ t: 'Cancelar', v: null, c: 'sec' }, { t: 'Subir de curso', v: v => ({ baja: $('#s-baja', v).checked }) }] });
+    if (!r) return;
+    if (!(await preguntar('¿Seguro?', `Cambiarán de grupo ${sube.length} alumnos${r.baja ? ' y ' + baja.length + ' pasarán a baja' : ''}. Puedes cambiar a mano un grupo después.`, 'Sí, subir', 'Cancelar', true))) return;
+    try {
+      sube.forEach(s => ws.push(W.cambiar('users/' + s.u.uid, { grupo: s.nuevo }, ['grupo'])));
+      if (r.baja) baja.forEach(u => ws.push(W.poner('lit_bajas/' + u.uid, { alias: u.alias, nombre: u.nombre, grupo: u.grupo, clave: u.clave, baja: ahora(), curso: cursoActual() }), W.borrar('users/' + u.uid)));
+      await confirmarLotes(ws);
+      sube.forEach(s => s.u.grupo = s.nuevo); if (r.baja) E.usuarios = E.usuarios.filter(u => !baja.includes(u));
+      S.bajas = null; tostada('Alumnado actualizado', 'ok'); refrescar();
+    } catch (e) { avisar('No se ha podido completar', mensajeError(e) + '<br><br>Revisa la lista: puede que algunos alumnos ya hayan cambiado.', '⚠️'); await reemplazar('alumnado', { recargar: true }); }
+  };
+  /* acciones por fila */
+  $('#a-tab').onclick = async e => {
+    const a = e.target.closest('a[data-ver]'); if (a) { e.preventDefault(); return ir('alumno', { uid: a.dataset.ver }); }
+    const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+    if (d.ver) return ir('alumno', { uid: d.ver });
+    if (d.reac) {
+      const u = S.bajas.find(x => x.id === d.reac); if (!u) return;
+      try { await confirmar([W.poner('users/' + u.id, { alias: u.alias, nombre: u.nombre, grupo: u.grupo, clave: u.clave }), W.borrar('lit_bajas/' + u.id)]);
+        E.usuarios.push({ uid: u.id, alias: u.alias, nombre: u.nombre, grupo: u.grupo, clave: u.clave }); S.bajas = S.bajas.filter(x => x !== u); tostada('Alumno reactivado', 'ok'); refrescar(); }
+      catch (er) { avisar('No se ha podido reactivar', mensajeError(er), '⚠️'); } return;
+    }
+    const u = E.usuarios.find(x => x.uid === (d.edit || d.baja)); if (!u) return;
+    if (d.edit) {
+      const r = await modal({ titulo: 'Editar alumno', ancho: true, html: `<label class="campo"><span>Nombre</span><input type="text" id="e-nom" maxlength="40" value="${esc(u.nombre)}"></label><label class="campo"><span>Grupo</span><input type="text" id="e-gru" list="e-gl" maxlength="10" value="${esc(u.grupo)}"><datalist id="e-gl">${grupos().map(g => `<option value="${esc(g)}">`).join('')}</datalist></label><p class="nota">Cambiar el grupo no mueve sus obras antiguas de ciclo. El usuario y la clave no cambian.</p>`,
+        botones: [{ t: 'Cancelar', v: null, c: 'sec' }, { t: 'Guardar', v: v => ({ nombre: $('#e-nom', v).value.trim(), grupo: $('#e-gru', v).value.trim() }), antes: v => { if (!$('#e-nom', v).value.trim() || !/^[1-6]/.test($('#e-gru', v).value.trim())) { tostada('Revisa el nombre y el grupo (4ºA…)', 'mal'); return false; } } }] });
+      if (!r) return;
+      try { await confirmar([W.cambiar('users/' + u.uid, r, ['nombre', 'grupo'])]); Object.assign(u, r); tostada('Cambios guardados', 'ok'); refrescar(); } catch (er) { avisar('No se ha podido guardar', mensajeError(er), '⚠️'); }
+    }
+    if (d.baja) {
+      const r = await modal({ titulo: 'Dar de baja a ' + u.nombre, icono: '🚪', ancho: true, html: `<p>No podrá entrar en la biblioteca ni en las demás apps que usen su ficha. Podrás reactivarlo desde «De baja».</p>
+        <label class="check" style="margin:8px 0"><input type="checkbox" id="b-obras"> <span>Borrar también sus obras de la biblioteca</span></label><p class="nota">Si no lo marcas, sus obras se quedan (con su nombre) hasta que las quites en Limpieza.</p>`,
+        botones: [{ t: 'Cancelar', v: null, c: 'sec' }, { t: 'Dar de baja', c: 'rojo', v: v => ({ obras: $('#b-obras', v).checked }) }] });
+      if (!r) return;
+      try { await darDeBaja(u, r.obras); S.bajas = null; tostada('Alumno dado de baja'); refrescar(); } catch (er) { avisar('No se ha podido dar de baja', mensajeError(er), '⚠️'); }
+    }
+  };
+};
+
+/* Qué ha subido un alumno */
+VISTAS.alumno = async (main, p) => {
+  main.innerHTML = cargando();
+  const [uDoc, obrasQ, resQ] = await Promise.all([leerDoc('users/' + p.uid).catch(() => null), consultar('lit_relatos', { donde: [['autorUid', 'EQUAL', p.uid]] }), consultar('lit_resenas', { donde: [['autorUid', 'EQUAL', p.uid]] })]);
+  const obras = obrasQ.docs.filter(f => f.estado !== 'borrado').sort((a, b) => (b.creado || 0) - (a.creado || 0));
+  obras.forEach(f => E.adm.obras[f.id] = f);
+  const nombre = uDoc ? uDoc.nombre : (obras[0] ? obras[0].autorNombre : 'Alumno'), grupo = uDoc ? uDoc.grupo : (obras[0] ? obras[0].autorGrupo : '');
+  const resenas = resQ.docs.sort((a, b) => (b.fecha || 0) - (a.fecha || 0));
+  const pub = obras.filter(f => f.estado === 'publicado'); const votos = pub.flatMap(votosDe);
+  main.innerHTML = `<h1 style="font-size:2rem">${esc(nombre)}</h1>
+    <p style="margin:2px 0 16px;color:var(--gris)">${esc(grupo)}${uDoc ? ` · usuario <code>${esc(uDoc.alias)}</code> · clave <code id="v-cl">••••••</code> <button class="btn txt peq" id="v-ver">Mostrar</button>` : ' · <b>de baja o sin ficha</b>'}</p>
+    <div class="cifras" style="margin-bottom:22px">
+      <div class="cifra"><b>${pub.length}</b><span>obras publicadas</span></div><div class="cifra"><b>${obras.length - pub.length}</b><span>borradores</span></div>
+      <div class="cifra"><b>${pub.reduce((a, f) => a + (f.palabras || 0), 0)}</b><span>palabras</span></div><div class="cifra"><b>${votos.length ? nfmt(votos.reduce((a, b) => a + b, 0) / votos.length) : '—'}</b><span>nota media</span></div>
+      <div class="cifra"><b>${resenas.length}</b><span>reseñas escritas</span></div></div>
+    <section class="seccion"><h2>📚 Obras</h2>${obras.length ? `<div class="tabla-wrap"><table><thead><tr><th>Título</th><th>Curso</th><th>Estado</th><th class="num">Nota</th><th class="num">Lecturas</th><th></th></tr></thead><tbody>${obras.map(f => `<tr><td><b>${esc(f.titulo)}</b><br><small style="color:var(--gris)">${esc(f.genero || '')} · ${f.palabras || 0} palabras</small></td><td>${esc(f.curso || '')}</td><td><span class="chip ${f.estado}">${f.estado === 'publicado' ? 'Publicada' : 'Borrador'}</span></td><td class="num">${nVotos(f) ? nfmt(media(f)) + ' (' + nVotos(f) + ')' : '—'}</td><td class="num">${nLecturas(f)}</td><td><button class="btn peq" data-corr="${esc(f.id)}">Corregir</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="vacio"><p>Todavía no ha subido nada.</p></div>'}</section>
+    <section class="seccion"><h2>💬 Reseñas que ha escrito</h2>${resenas.length ? `<div class="resenas">${resenas.map(r => `<article class="resena ${r.avisada ? 'avisada' : ''}"><p><b>${r.estrellas ? htmlEstrellas(r.estrellas) : ''}</b> ${esc(r.texto)}</p><small style="color:var(--gris)">${fecha(r.fecha)}</small></article>`).join('')}</div>` : '<div class="vacio"><p>Aún no ha escrito reseñas.</p></div>'}</section>`;
+  $$('[data-corr]', main).forEach(b => b.onclick = () => ir('corregir', { id: b.dataset.corr }));
+  $('#v-ver') && ($('#v-ver').onclick = () => { const c = $('#v-cl'), ver = c.textContent.includes('•'); c.textContent = ver ? uDoc.clave : '••••••'; $('#v-ver').textContent = ver ? 'Ocultar' : 'Mostrar'; });
+};
+
+/* =========================================================================
+   RESEÑAS AVISADAS
+   ========================================================================= */
+VISTAS.resenas = async main => {
+  main.innerHTML = cargando();
+  let l = (await consultar('lit_resenas', { donde: [['avisada', 'EQUAL', true]] })).docs.sort((a, b) => (b.fecha || 0) - (a.fecha || 0));
+  const pinta = () => {
+    main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:4px">Reseñas avisadas</h1><p style="margin:0 0 16px;color:var(--gris)">El alumnado avisa de las reseñas que no respetan las normas. Las demás reseñas se borran desde la obra, en «Corregir».</p>
+      ${l.length ? `<div class="resenas">${l.map(r => `<article class="resena avisada"><div class="cab"><span class="av" style="background:${colorPersona(r.autorUid)}">${esc(iniciales(r.nombre))}</span><span class="quien"><b>${esc(r.nombre)}</b><small>${esc(r.grupo || '')}, ${haceTiempo(r.fecha)}</small></span>${r.estrellas ? htmlEstrellas(r.estrellas) : ''}</div><p>${esc(r.texto)}</p>
+        <div class="acts"><button class="btn txt peq" data-obra="${esc(r.relatoId)}">Ver obra</button><button class="btn txt peq" data-ok="${esc(r.id)}">Está bien</button><button class="btn peq rojo" data-del="${esc(r.id)}">🗑️ Borrar</button></div></article>`).join('')}</div>` : '<div class="vacio"><p>No hay reseñas avisadas. 🎉</p></div>'}`;
+  };
+  pinta();
+  main.onclick = async e => {
+    const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+    if (d.obra) return ir('corregir', { id: d.obra });
+    const r = l.find(x => x.id === (d.ok || d.del)); if (!r) return;
+    try {
+      if (d.ok) await confirmar([W.cambiar('lit_resenas/' + r.id, { avisada: false }, ['avisada'])]);
+      else { if (!(await preguntar('¿Borrar la reseña?', `Se borrará la reseña de ${esc(r.nombre)}. Su voto en estrellas se mantiene.`, 'Borrar', 'Cancelar', true))) return;
+        await confirmar([W.borrar('lit_resenas/' + r.id), W.cambiar('lit_relatos/' + r.relatoId, { res: {} }, [campoMapa('res', r.autorUid)], { act: true })]).catch(async er => { if (er.estado === 404) await confirmar([W.borrar('lit_resenas/' + r.id)]); else throw er; }); tostada('Reseña borrada'); }
+      l = l.filter(x => x !== r); pinta();
+    } catch (er) { avisar('No se ha podido hacer', mensajeError(er), '⚠️'); }
+  };
+};
+
+/* =========================================================================
+   LIMPIEZA: obras antiguas con poca valoración
+   ========================================================================= */
+VISTAS.limpieza = async main => {
+  const antiguos = cursosPosibles().filter(c => c !== cursoActual());
+  main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:4px">Limpieza</h1>
+    <p style="margin:0 0 16px;color:var(--gris);max-width:62ch">Busca obras de cursos anteriores con poca valoración y decide cuáles borrar. Puedes guardar una copia antes (archivo con los textos). Borrar es definitivo.</p>
+    <div class="hoja" style="margin:0 0 16px"><div class="grid2">
+      <label class="campo"><span>Curso</span><select id="l-cur">${antiguos.map(c => `<option>${c}</option>`).join('')}</select></label>
+      <label class="campo"><span>Ciclo</span><select id="l-cic"><option value="0">Todos</option>${CICLOS.map(c => `<option value="${c.n}">${c.nombre}</option>`).join('')}</select></label>
+      <label class="campo"><span>Nota media menor que</span><select id="l-nota"><option>2</option><option>2.5</option><option selected>3</option><option>3.5</option><option>4</option></select></label>
+      <label class="check" style="align-self:end;margin-bottom:12px"><input type="checkbox" id="l-sin" checked> <span>Incluir las que no tienen votos</span></label></div>
+      <button class="btn" id="l-buscar">Buscar obras</button></div><div id="l-res"></div>`;
+  let cand = [];
+  const pintar = () => {
+    const sel = cand.filter(x => x.sel).length;
+    $('#l-res').innerHTML = cand.length ? `<p class="contador">${cand.length} ${cand.length === 1 ? 'obra encontrada' : 'obras encontradas'}. Desmarca las que quieras conservar.</p>
+      <div class="tabla-wrap"><table><thead><tr><th></th><th>Título</th><th>Autor</th><th class="num">Nota</th><th class="num">Lecturas</th></tr></thead><tbody>${cand.map((x, i) => `<tr><td><input type="checkbox" data-i="${i}" ${x.sel ? 'checked' : ''} aria-label="Seleccionar"></td><td><button class="btn txt peq" data-corr="${esc(x.f.id)}">${esc(x.f.titulo)}</button></td><td>${esc(x.f.autorNombre)} <small style="color:var(--gris)">${esc(x.f.autorGrupo || '')}</small></td><td class="num">${nVotos(x.f) ? nfmt(media(x.f)) + ' (' + nVotos(x.f) + ')' : '—'}</td><td class="num">${nLecturas(x.f)}</td></tr>`).join('')}</tbody></table></div>
+      <div class="fila fin" style="margin-top:12px"><button class="btn sec" id="l-copia">⬇️ Guardar copia (${sel})</button><button class="btn rojo" id="l-borrar">🗑️ Borrar ${sel} ${sel === 1 ? 'obra' : 'obras'}</button></div>` : '<div class="vacio"><p>No hay obras que cumplan estas condiciones.</p></div>';
+  };
+  $('#l-buscar').onclick = async () => {
+    const b = $('#l-buscar'); b.disabled = true; $('#l-res').innerHTML = cargando('Buscando…');
+    try {
+      const cic = +$('#l-cic').value, umbral = parseFloat($('#l-nota').value), sin = $('#l-sin').checked;
+      const q = await consultar('lit_relatos', { donde: [['curso', 'EQUAL', $('#l-cur').value]] });
+      cand = q.docs.filter(f => f.estado !== 'borrado' && (!cic || f.ciclo === cic) && (nVotos(f) ? media(f) < umbral : sin)).sort((a, b) => (nVotos(a) ? media(a) : -1) - (nVotos(b) ? media(b) : -1)).map(f => ({ f, sel: true }));
+      pintar();
+    } catch (e) { $('#l-res').innerHTML = `<div class="vacio"><p>${mensajeError(e)}</p></div>`; } finally { b.disabled = false; }
+  };
+  $('#l-res').onchange = e => { const i = e.target.dataset.i; if (i !== undefined) { cand[+i].sel = e.target.checked; pintar(); } };
+  $('#l-res').onclick = async e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.corr) return ir('corregir', { id: b.dataset.corr });
+    const sel = cand.filter(x => x.sel); if (!sel.length) return;
+    try {
+      if (b.id === 'l-copia') {
+        const salida = []; for (const x of sel) { const t = await leerDoc('lit_textos/' + x.f.id); salida.push({ titulo: x.f.titulo, autor: x.f.autorNombre, grupo: x.f.autorGrupo, curso: x.f.curso, genero: x.f.genero, media: media(x.f), votos: nVotos(x.f), html: t ? t.html : '' }); }
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(salida, null, 1)], { type: 'application/json' })); a.download = 'copia-obras-' + $('#l-cur').value + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); tostada('Copia guardada', 'ok');
+      }
+      if (b.id === 'l-borrar') {
+        if (!(await preguntar('¿Borrar ' + sel.length + (sel.length === 1 ? ' obra?' : ' obras?'), 'Desaparecerán de la biblioteca con sus votos y reseñas. No se puede deshacer. ¿Has guardado la copia?', 'Borrar definitivamente', 'Cancelar', true, '🗑️'))) return;
+        const ws = sel.flatMap(x => escrituraBorrarObra(x.f)); await confirmarLotes(ws);
+        sel.forEach(x => delete E.adm.obras[x.f.id]); cand = cand.filter(x => !x.sel); tostada('Obras borradas', 'ok'); pintar();
+      }
+    } catch (er) { avisar('No se ha podido hacer', mensajeError(er), '⚠️'); }
+  };
+};
+
+/* =========================================================================
+   AJUSTES
+   ========================================================================= */
+VISTAS.ajustes = async main => {
+  await cargarConfig(true).catch(() => {});
+  const k = { ...E.cfg };
+  const inter = (id, t, d) => `<div class="ajuste"><div><b>${t}</b><p>${d}</p></div><label class="interruptor"><input type="checkbox" id="${id}" ${k[id] ? 'checked' : ''}><span></span></label></div>`;
+  main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:14px">Ajustes</h1><div class="hoja estrecho" style="margin:0">
+    ${inter('escritura', 'Escritura abierta', 'Si la cierras, el alumnado puede leer y valorar, pero no escribir obras nuevas.')}
+    ${inter('valoraciones', 'Valoraciones con estrellas', 'El alumnado puede puntuar de 1 a 5 estrellas.')}
+    ${inter('resenas', 'Reseñas', 'El alumnado puede escribir reseñas.')}
+    ${inter('soloMiCiclo', 'Cada ciclo ve solo su sección', 'Apagado: pueden mirar también las obras de los otros ciclos.')}
+    <div class="ajuste"><div><b>Mínimo de palabras para publicar</b><p>Evita obras de una sola línea.</p></div><input type="number" id="minPalabras" min="0" max="2000" value="${k.minPalabras}" style="width:110px"></div>
+    <div class="ajuste"><div><b>Votos mínimos para el podio</b><p>Una obra entra en el podio con al menos estos votos.</p></div><input type="number" id="minVotosPodio" min="1" max="50" value="${k.minVotosPodio}" style="width:110px"></div>
+    <label class="campo" style="margin-top:14px"><span>Aviso en la portada <small>(vacío para quitarlo)</small></span><textarea id="aviso" maxlength="300" placeholder="Por ejemplo: Esta semana leemos las obras del reto de otoño">${esc(k.aviso)}</textarea></label>
+    <div class="fila fin"><button class="btn" id="aj-g">Guardar ajustes</button></div></div>`;
+  $('#aj-g').onclick = async () => {
+    const n = { ...CFG_DEF };
+    ['escritura', 'valoraciones', 'resenas', 'soloMiCiclo'].forEach(x => n[x] = $('#' + x).checked);
+    n.minPalabras = Math.max(0, Math.min(2000, parseInt($('#minPalabras').value) || 0));
+    n.minVotosPodio = Math.max(1, Math.min(50, parseInt($('#minVotosPodio').value) || 3));
+    n.aviso = $('#aviso').value.trim();
+    try {
+      await confirmar([W.poner('lit_config/main', n)]);
+      E.cfg = n; tostada('Ajustes guardados', 'ok');
+    } catch (e) { avisar('No se ha podido guardar', mensajeError(e), '⚠️'); }
+  };
+};
+
+/* =========================================================================
+   ARRANQUE
+   ========================================================================= */
+(async function arranque() {
+  const s = leerSesion();
+  if (!s) { reiniciarNav('login'); return; }
+  E.ses = s;
+  $('#app').innerHTML = `<div class="login"><div class="caja"><div class="logo">${LOGO(76)}<h1>Administración</h1><p>Abriendo…</p></div></div></div>`;
+  try { await iniciar(); } catch (e) { console.warn(e); borrarSesion(); E.ses = null; reiniciarNav('login'); }
+})();
+
+</script>
+</body>
+</html>
