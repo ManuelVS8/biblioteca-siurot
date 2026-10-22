@@ -68,7 +68,7 @@ main{max-width:1100px;margin:0 auto;padding:18px 16px 80px}
 .campo{display:block;margin-bottom:14px}
 .campo>span{display:block;font-weight:600;margin-bottom:6px;font-size:.95rem}
 .campo small{color:var(--gris);font-weight:400}
-input[type=text],input[type=password],input[type=number],input[type=date],input[type=search],select,textarea{width:100%;border:2px solid var(--linea);background:var(--hoja);border-radius:12px;padding:12px 14px;min-height:50px;outline:none;transition:border-color .15s}
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],input[type=search],select,textarea{width:100%;border:2px solid var(--linea);background:var(--hoja);border-radius:12px;padding:12px 14px;min-height:50px;outline:none;transition:border-color .15s}
 input:focus,select:focus,textarea:focus{border-color:var(--pizarra)}
 textarea{resize:vertical;min-height:110px;line-height:1.5}
 .check{display:flex;gap:10px;align-items:center;cursor:pointer;user-select:none}
@@ -374,6 +374,8 @@ tr:hover td{background:#f7faf9}
 .pestanas button{background:rgba(255,255,255,.14);border-color:transparent;color:#fff}
 .pestanas button.on{background:#fff;color:var(--pizarra);border-color:#fff}
 
+.o-sep{display:flex;align-items:center;gap:10px;margin:18px 0 14px;color:var(--gris);font-size:.9rem}.o-sep:before,.o-sep:after{content:'';flex:1;height:1px;background:var(--linea)}
+
 </style>
 </head>
 <body>
@@ -395,7 +397,11 @@ const FB = {
   apiKey: 'AIzaSyC1zofo3VKHEBFka7N6XuiiBu4q1d4Zh5I',
   proyecto: 'biblioteca-siurot',
   dominio: 'ajedrez-siurot.app',
-  admin: 'manuelvsanchez@gmail.com'
+  admin: 'manuelvsanchez@gmail.com',
+  /* Correos con permiso de administración. Para añadir a alguien: ponlo aquí Y en las reglas de Firestore (litAdmin). */
+  admins: ['manuelvsanchez@gmail.com'],
+  /* ID de cliente web de Google (Firebase → Authentication → Google → Configuración del SDK web). Vacío = sin botón de Google. */
+  googleClientId: '836279800383-jlvrhrg3hbfe588ta193fpln5k5s0cvo.apps.googleusercontent.com'
 };
 const URL_AUTH = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + FB.apiKey;
 const URL_TOKEN = 'https://securetoken.googleapis.com/v1/token?key=' + FB.apiKey;
@@ -502,7 +508,7 @@ async function pedir(url, opc = {}) {
 
 function guardarSesion() {
   const s = E.ses; if (!s) return;
-  const datos = JSON.stringify({ uid: s.uid, email: s.email, ref: s.ref, tok: s.tok, exp: s.exp });
+  const datos = JSON.stringify({ uid: s.uid, email: s.email, nombre: s.nombre || '', ref: s.ref, tok: s.tok, exp: s.exp });
   try {
     sessionStorage.setItem(PREF + 'ses', datos);
     if (s.recordar) localStorage.setItem(PREF + 'ses', datos); else localStorage.removeItem(PREF + 'ses');
@@ -531,6 +537,24 @@ async function entrar(usuario, clave, recordar) {
   guardarSesion();
 }
 
+/* Entrada con Google: Google Identity Services devuelve un ID token y Firebase lo canjea (sin SDK) */
+const URL_IDP = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=' + FB.apiKey;
+function cargarGoogle() {
+  return new Promise((ok, mal) => {
+    if (window.google && google.accounts && google.accounts.id) return ok();
+    const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
+    s.onload = ok; s.onerror = () => mal(new ErrorFB('No se ha podido cargar el acceso con Google. Revisa la conexión.', 'GOOGLE', 0));
+    document.head.appendChild(s);
+  });
+}
+async function entrarConGoogle(credencial) {
+  const origen = /^https?:/.test(location.origin) ? location.origin : 'http://localhost';
+  const j = await pedir(URL_IDP, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postBody: 'id_token=' + credencial + '&providerId=google.com', requestUri: origen, returnIdpCredential: true, returnSecureToken: true }) });
+  E.ses = { uid: j.localId, email: j.email, nombre: j.displayName || j.fullName || '', tok: j.idToken, ref: j.refreshToken, exp: ahora() + (+j.expiresIn) * 1000, recordar: true };
+  guardarSesion();
+}
+const esCorreoAlumno = email => (email || '').toLowerCase().endsWith('@' + FB.dominio);
+
 async function token() {
   const s = E.ses; if (!s) throw new ErrorFB('Sesión cerrada', 'SIN_SESION', 401);
   if (s.tok && ahora() < s.exp - 5 * 60 * 1000) return s.tok;
@@ -541,11 +565,10 @@ async function token() {
 }
 
 async function fs(metodo, ruta, cuerpo) {
-  const llamar = async () => pedir(URL_FS + ruta, {
-    method: metodo,
-    headers: { 'Authorization': 'Bearer ' + await token(), ...(cuerpo ? { 'Content-Type': 'application/json' } : {}) },
-    body: cuerpo ? JSON.stringify(cuerpo) : undefined
-  });
+  /* Sin sesión (lectura pública): se llama con la clave de la app y sin cabecera de autorización */
+  const llamar = async () => E.ses
+    ? pedir(URL_FS + ruta, { method: metodo, headers: { 'Authorization': 'Bearer ' + await token(), ...(cuerpo ? { 'Content-Type': 'application/json' } : {}) }, body: cuerpo ? JSON.stringify(cuerpo) : undefined })
+    : pedir(URL_FS + ruta + (ruta.includes('?') ? '&' : '?') + 'key=' + FB.apiKey, { method: metodo, headers: cuerpo ? { 'Content-Type': 'application/json' } : {}, body: cuerpo ? JSON.stringify(cuerpo) : undefined });
   try { return await llamar(); }
   catch (e) {
     if (e.estado === 401 && E.ses) { E.ses.exp = 0; return await llamar(); }
@@ -864,7 +887,7 @@ async function asegurarAlcance(ciclo, curso) {
 async function sincronizar(forzar = false) {
   if (!forzar && ahora() - E.ultimaSync < 45000) return;
   const antes = E.cargados.join();
-  await asegurarAlcance(E.yo.ciclo, cursoActual());     // mi ciclo y curso siempre (la caché puede venir de otro alumno)
+  for (const c of (E.yo.rol === 'alumno' ? [E.yo.ciclo] : [1, 2, 3])) await asegurarAlcance(c, cursoActual());   // mi ciclo (o todos, si no soy del cole) y curso actual
   if (E.cargados.join() === antes) await incremental();
   E.ultimaSync = ahora(); guardarCache();
 }
@@ -923,7 +946,7 @@ function barra() {
     ${NAV.length > 1 ? '<button class="atras" id="b-atras" aria-label="Atrás">←</button>' : ''}
     <button class="marca" id="b-marca" aria-label="Ir al inicio">${LOGO(34)}<span>Biblioteca Siurot</span></button>
     <div class="esp"></div>
-    <button class="yo" id="b-yo" aria-haspopup="menu"><span class="ini">${esc(iniciales(y.nombre))}</span><span class="nom">${esc(y.nombre)}</span></button>
+    ${y.rol === 'anonimo' ? '<button class="btn amar peq" id="b-entrar">Entrar</button>' : `<button class="yo" id="b-yo" aria-haspopup="menu"><span class="ini">${esc(iniciales(y.nombre))}</span><span class="nom">${esc(y.nombre)}</span></button>`}
   </header>`;
 }
 function LOGO(t) {
@@ -936,7 +959,8 @@ async function pintar() {
   app.innerHTML = barra() + '<main id="principal"></main>';
   $('#b-atras') && $('#b-atras').addEventListener('click', atras);
   $('#b-marca').addEventListener('click', irInicio);
-  $('#b-yo').addEventListener('click', menuYo);
+  $('#b-yo') && $('#b-yo').addEventListener('click', menuYo);
+  $('#b-entrar') && $('#b-entrar').addEventListener('click', () => ir('login'));
   window.scrollTo(0, 0);
   try { await VISTAS[v.vista]($('#principal'), v.p || {}); }
   catch (e) { console.error(e); $('#principal').innerHTML = `<div class="vacio"><p>${mensajeError(e)}</p><button class="btn" id="reint">Reintentar</button></div>`; $('#reint').onclick = () => pintar(); if (/SESION|TOKEN|REFRESH/.test(e.cod)) salir(true); }
@@ -946,8 +970,7 @@ function menuYo(e) {
   if ($('.menuyo')) { $('.menuyo').remove(); return; }
   const m = document.createElement('div'); m.className = 'menuyo'; m.setAttribute('role', 'menu');
   m.innerHTML = `<div class="cab"><b>${esc(E.yo.nombre)}</b><small>${esc(E.yo.grupo || '')}</small></div>
-    <button data-a="perfil">🏅 Mi perfil e insignias</button>
-    <button data-a="misobras">📝 Mis obras</button>
+    ${E.yo.rol === 'alumno' ? '<button data-a="perfil">🏅 Mi perfil e insignias</button><button data-a="misobras">📝 Mis obras</button>' : ''}
     <button data-a="normas">📏 Normas de la biblioteca</button>
     <button data-a="salir">🚪 Salir</button>`;
   document.body.appendChild(m);
@@ -961,7 +984,7 @@ async function salir(silencioso) {
   if (!silencioso && !(await preguntar('¿Salir de la biblioteca?', 'Se cerrará tu sesión en este dispositivo.', 'Salir'))) return;
   if (!(await puedeSalir())) return;
   borrarSesion(); E.ses = null; E.yo = null; E.resenasCache = {}; E.relatos = {}; E.cargados = []; E.sync = null;
-  reiniciarNav('login');
+  await iniciarAnonimo();
 }
 function normas() {
   return modal({
@@ -984,14 +1007,19 @@ function normas() {
    ========================================================================= */
 VISTAS.login = app => {
   app.innerHTML = `<div class="login"><div class="caja">
-    <div class="logo">${LOGO(76)}<h1>Biblioteca Siurot</h1><p>Escribe y lee historias</p></div>
+    <div class="logo">${LOGO(76)}<h1>Biblioteca Siurot</h1><p>Entra para escribir, valorar y comentar</p></div>
     <form class="hoja" id="f-login" autocomplete="on"><div id="l-err"></div>
+      <h2 style="font-size:1.1rem;margin:0 0 12px">Alumnado del colegio</h2>
       <label class="campo"><span>Usuario</span><input type="text" id="l-u" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Por ejemplo: luciam" required></label>
-      <label class="campo"><span>Clave</span><div class="con-ojo"><input type="password" id="l-c" autocomplete="current-password" autocapitalize="none" spellcheck="false" required><button type="button" class="ojo" id="l-ojo" aria-label="Mostrar clave" aria-pressed="false" title="Mostrar u ocultar la clave">👁️</button></div></label>
+      <label class="campo"><span>Clave</span><div class="con-ojo"><input type="password" id="l-c" autocomplete="current-password" autocapitalize="none" spellcheck="false" required><button type="button" class="ojo" id="l-ojo" aria-label="Mostrar clave" aria-pressed="false">👁️</button></div></label>
       <label class="check" style="margin:4px 0 14px"><input type="checkbox" id="l-r"> <span>Mantener la sesión (solo en tu ordenador de casa)</span></label>
       <button class="btn" id="l-b">Entrar</button>
       <p class="nota">Usa el usuario y la clave que te ha dado tu maestro.</p>
-    </form></div></div>`;
+      ${FB.googleClientId ? '<div class="o-sep"><span>o</span></div><h2 style="font-size:1.1rem;margin:0 0 6px">Familias y otras personas</h2><p class="nota" style="margin:0 0 10px">Entra con tu cuenta de Google para valorar y comentar. Tu nombre aparecerá junto a tus comentarios.</p><div id="g-btn" style="display:flex;justify-content:center;min-height:44px"></div>' : ''}
+    </form>
+    ${E.yo ? '<p style="text-align:center;margin-top:14px"><button class="btn txt" id="l-volver" type="button" style="color:#fff;text-decoration:underline">← Seguir sin entrar</button></p>' : ''}
+  </div></div>`;
+  $('#l-volver') && ($('#l-volver').onclick = () => reiniciarNav('inicio'));
   $('#l-u').focus();
   $('#l-ojo').addEventListener('click', () => {
     const c = $('#l-c'), o = $('#l-ojo'), ver = c.type === 'password';
@@ -1007,20 +1035,44 @@ VISTAS.login = app => {
     try { await entrar(u, c, $('#l-r').checked); await iniciar(); }
     catch (e) { $('#l-err').innerHTML = `<div class="err">${e.cod === 'NO_ALTA' ? esc(e.message) : mensajeError(e)}</div>`; b.disabled = false; b.textContent = 'Entrar'; borrarSesion(); E.ses = null; }
   });
+  if (FB.googleClientId) cargarGoogle().then(() => {
+    google.accounts.id.initialize({ client_id: FB.googleClientId, callback: async r => {
+      $('#l-err').innerHTML = '';
+      try { await entrarConGoogle(r.credential); await iniciar(); }
+      catch (e) { $('#l-err').innerHTML = `<div class="err">${mensajeError(e)}</div>`; borrarSesion(); E.ses = null; }
+    } });
+    google.accounts.id.renderButton($('#g-btn'), { theme: 'outline', size: 'large', text: 'signin_with', locale: 'es', width: 280 });
+  }).catch(() => {});
 };
+
+/* Sin sesión: se puede leer todo. Valorar y comentar exige entrar. */
+async function iniciarAnonimo() {
+  E.ses = null; E.yo = { uid: '', nombre: '', grupo: '', alias: '', ciclo: 0, rol: 'anonimo' };
+  cargarCache(); await cargarConfig(true); podarCache(); await sincronizar(true);
+  reiniciarNav('inicio');
+}
+/* Familias y otras personas con cuenta de Google: leen, valoran y comentan con su nombre */
+async function iniciarVisitante() {
+  const s = E.ses;
+  E.yo = { uid: s.uid, nombre: s.nombre || (s.email || '').split('@')[0], grupo: 'Visitante', alias: '', ciclo: 0, rol: 'visitante' };
+  cargarCache(); await cargarConfig(true); podarCache(); await sincronizar(true);
+  reiniciarNav('inicio');
+  const vistas = ls.get('normasVistas', []);
+  if (!vistas.includes(E.yo.uid)) { vistas.push(E.yo.uid); ls.set('normasVistas', vistas.slice(-60)); normas(); }
+}
 
 async function iniciar() {
   const s = E.ses;
-  if (s.email === FB.admin) { borrarSesion(); E.ses = null; throw new ErrorFB('Esta es la biblioteca del alumnado. Para administrarla usa la app de administración.', 'NO_ALTA', 403); }
+  if (!esCorreoAlumno(s.email)) return iniciarVisitante();
   let u = null;
   try { u = await leerDoc('users/' + s.uid); } catch (e) { if (e.estado !== 403) throw e; }
   if (!u || u.baja) { borrarSesion(); E.ses = null; throw new ErrorFB(u && u.baja ? 'Este usuario está dado de baja. Habla con tu maestro.' : 'Tu usuario no está dado de alta en el colegio. Habla con tu maestro.', 'NO_ALTA', 403); }
   const grupo = u.grupo || '';
-  E.yo = { uid: s.uid, nombre: u.nombre || u.alias || 'Alumno', grupo, alias: u.alias || '', ciclo: cicloDeGrupo(grupo) };
+  E.yo = { uid: s.uid, nombre: u.nombre || u.alias || 'Alumno', grupo, alias: u.alias || '', ciclo: cicloDeGrupo(grupo), rol: 'alumno' };
   cargarCache();
   await cargarConfig(true);
   podarCache();
-  await Promise.all([sincronizar(true), cargarDeAutor(E.yo.uid)]);
+  await Promise.all([sincronizar(true), cargarDeAutor(E.yo.uid)]);   // (solo alumnado)
   reiniciarNav('inicio');
   const vistas = ls.get('normasVistas', []);
   if (!vistas.includes(E.yo.uid)) { vistas.push(E.yo.uid); ls.set('normasVistas', vistas.slice(-60)); normas(); }
@@ -1056,16 +1108,17 @@ VISTAS.inicio = async main => {
 
   main.innerHTML = `
     <section class="saludo">
-      <h1>Hola, ${esc(nombreCorto)}</h1>
-      <p>${todas.length ? `Hay ${todas.length} ${todas.length === 1 ? 'obra' : 'obras'} en la biblioteca de tu ciclo este curso${porLeer ? ` y te ${porLeer === 1 ? 'queda 1' : 'quedan ' + porLeer} por leer` : ' y las has leído todas'}.` : 'La biblioteca está esperando su primera historia.'}</p>
+      <h1>${y.rol === 'anonimo' ? 'Biblioteca Siurot' : 'Hola, ' + esc(nombreCorto)}</h1>
+      <p>${y.rol !== 'alumno' ? (todas.length ? `Hay ${todas.length} ${todas.length === 1 ? 'obra' : 'obras'} escritas por el alumnado este curso. Lee y comparte tu opinión.` : 'La biblioteca está esperando su primera historia.') : todas.length ? `Hay ${todas.length} ${todas.length === 1 ? 'obra' : 'obras'} en la biblioteca de tu ciclo este curso${porLeer ? ` y te ${porLeer === 1 ? 'queda 1' : 'quedan ' + porLeer} por leer` : ' y las has leído todas'}.` : 'La biblioteca está esperando su primera historia.'}</p>
       <div class="acciones">
-        ${cfg.escritura ? `<button class="acc prim" data-ir="editor"><span class="ic">✍️</span><b>Escribir</b><small>Empieza una historia nueva</small></button>` : ''}
+        ${y.rol === 'alumno' && cfg.escritura ? `<button class="acc prim" data-ir="editor"><span class="ic">✍️</span><b>Escribir</b><small>Empieza una historia nueva</small></button>` : ''}
         <button class="acc" data-ir="biblioteca"><span class="ic">📚</span><b>Biblioteca</b><small>Busca, ordena y lee</small></button>
-        <button class="acc" data-ir="misobras"><span class="ic">📝</span><b>Mis obras</b><small>${mias.length ? mias.length + (mias.length === 1 ? ' obra' : ' obras') : 'Aún no has escrito'}</small></button>
+        ${y.rol === 'alumno' ? `<button class="acc" data-ir="misobras"><span class="ic">📝</span><b>Mis obras</b><small>${mias.length ? mias.length + (mias.length === 1 ? ' obra' : ' obras') : 'Aún no has escrito'}</small></button>` : ''}
       </div>
     </section>
     ${cfg.aviso ? `<div class="aviso"><span class="ic">📣</span><p>${esc(cfg.aviso)}</p></div>` : ''}
-    ${!cfg.escritura ? `<div class="aviso"><span class="ic">⏸️</span><p>Ahora mismo la escritura está cerrada. Puedes leer y valorar.</p></div>` : ''}
+    ${y.rol === 'anonimo' ? `<div class="aviso"><span class="ic">💬</span><div><p>Para valorar una obra o escribir una reseña, entra con tu cuenta.</p><button class="btn peq" data-ir="login">Entrar</button></div></div>` : ''}
+    ${y.rol === 'alumno' && !cfg.escritura ? `<div class="aviso"><span class="ic">⏸️</span><p>Ahora mismo la escritura está cerrada. Puedes leer y valorar.</p></div>` : ''}
     ${nuevasRes ? `<div class="aviso verde"><span class="ic">💬</span><div><p><b>${nuevasRes === 1 ? 'Tienes una reseña nueva' : 'Tienes ' + nuevasRes + ' reseñas nuevas'}</b> en tus obras.</p><button class="btn peq" data-ir="misobras">Verlas</button></div></div>` : ''}
 
 
@@ -1082,7 +1135,7 @@ VISTAS.inicio = async main => {
     <section class="seccion"><h2>🆕 Recién publicadas <button class="btn txt mas" data-ir="biblioteca">Ver todas</button></h2>
       ${nuevas.length ? `<div class="fila-scroll">${nuevas.map(libro).join('')}</div>` : `<div class="vacio"><p>Todavía no hay obras publicadas.</p>${cfg.escritura ? '<button class="btn amar" data-ir="editor">Escribir la primera</button>' : ''}</div>`}
     </section>
-    <p style="text-align:center;color:var(--gris);margin-top:28px">Has leído ${leidas} de ${todas.filter(f => !esMia(f)).length} obras de tus compañeros este curso.</p>
+    ${y.rol === 'alumno' ? `<p style="text-align:center;color:var(--gris);margin-top:28px">Has leído ${leidas} de ${todas.filter(f => !esMia(f)).length} obras de tus compañeros este curso.</p>` : ''}
   `;
   $$('[data-ir]', main).forEach(b => b.addEventListener('click', () => ir(b.dataset.ir)));
   enlazarLibros(main);
@@ -1114,9 +1167,9 @@ VISTAS.biblioteca = async (main, p) => {
         <label><span class="sr">Curso</span><select id="f-curso"><option value="actual" ${F.curso === 'actual' ? 'selected' : ''}>Este curso</option><option value="todos" ${F.curso === 'todos' ? 'selected' : ''}>Todos los cursos</option></select></label>
         <label><span class="sr">Ordenar</span><select id="f-orden">${ORDENES.map(([v, t]) => `<option value="${v}" ${F.orden === v ? 'selected' : ''}>Ordenar: ${t}</option>`).join('')}</select></label>
         <label><span class="sr">Tipo</span><select id="f-gen"><option value="">Todos los tipos</option>${GENEROS.map(g => `<option>${g}</option>`).join('')}</select></label>
-        <label class="solo"><span class="sr">Mostrar</span><select id="f-ver">
+        ${E.yo.rol !== 'anonimo' ? `        <label class="solo"><span class="sr">Mostrar</span><select id="f-ver">
           <option value="todas">Mostrar todas</option><option value="noleidas">Solo las que no he leído</option><option value="leidas">Solo las que he leído</option>
-</select></label>
+</select></label>` : ''}
       </div>
     </div>
     <p class="contador" id="contador"></p>
@@ -1159,7 +1212,7 @@ VISTAS.biblioteca = async (main, p) => {
   $('#f-q').addEventListener('input', e => { F.q = e.target.value; pintarLista(); });
   $('#f-orden').addEventListener('change', e => { F.orden = e.target.value; ls.set('filtros', { orden: F.orden }); pintarLista(); });
   $('#f-gen').addEventListener('change', e => { F.genero = e.target.value; pintarLista(); });
-  $('#f-ver').addEventListener('change', e => { F.ver = e.target.value; pintarLista(); });
+  $('#f-ver') && $('#f-ver').addEventListener('change', e => { F.ver = e.target.value; pintarLista(); });
   $('#f-curso').addEventListener('change', e => { F.curso = e.target.value; cambiarAlcance(); });
   $('#f-ciclos') && $('#f-ciclos').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return; F.ciclo = +b.dataset.c;
@@ -1238,7 +1291,7 @@ VISTAS.leer = async (main, p) => {
   prepararVoz($('#b-voz'), () => textoPlano(html), f.titulo);
 
   // marcar como leída al llegar al final
-  let desbloqueado = mia || !!(f.leido && f.leido[yo.uid]);
+  let desbloqueado = mia || yo.rol === 'anonimo' || !!(f.leido && f.leido[yo.uid]);
   const alFinal = async () => {
     if (desbloqueado) return; desbloqueado = true; pintarValorar();
     if (f.estado !== 'publicado') return;
@@ -1262,6 +1315,11 @@ VISTAS.leer = async (main, p) => {
     f = E.relatos[p.id] || f;
     const cfg = E.cfg;
     if (f.estado !== 'publicado') { sec.innerHTML = ''; return; }
+    if (yo.rol === 'anonimo') {
+      if (!cfg.valoraciones && !cfg.resenas) { sec.innerHTML = ''; return; }
+      sec.innerHTML = `<div class="bloqueo"><span class="ic">💬</span><div><b>¿Quieres valorarla o comentar?</b><br>Entra con tu cuenta para poner estrellas o escribir una reseña. Tu nombre aparecerá junto a tu opinión.<div style="margin-top:10px"><button class="btn peq" id="v-entrar">Entrar</button></div></div></div>`;
+      $('#v-entrar').onclick = () => ir('login'); return;
+    }
     if (mia) {
       sec.innerHTML = `<div class="hoja"><h2>Tu obra</h2><p style="margin:0;color:var(--gris)">No puedes valorar tu propia obra. Aquí abajo verás lo que opinan tus compañeros.</p></div>`; return;
     }
@@ -1280,6 +1338,7 @@ VISTAS.leer = async (main, p) => {
         <textarea id="r-txt" maxlength="800" placeholder="Cuenta qué te ha gustado y qué mejorarías. Habla de la obra, no de la persona.">${esc(r ? r.texto : '')}</textarea>
         <div class="cuenta"><span id="r-n">0</span>/800</div></label>` : ''}
       <div class="fila fin" style="margin-top:8px">
+        ${miVoto && cfg.valoraciones ? '<button class="btn sec" id="r-quitar">Quitar mis estrellas</button>' : ''}
         ${r ? '<button class="btn sec" id="r-borrar">Borrar mi reseña</button>' : ''}
         <button class="btn" id="r-env">${miVoto || r ? 'Guardar cambios' : 'Publicar mi opinión'}</button>
       </div></div>`;
@@ -1296,12 +1355,13 @@ VISTAS.leer = async (main, p) => {
     }
     $('#r-env').onclick = () => enviarValoracion(sel, ta ? ta.value : '');
     $('#r-borrar') && ($('#r-borrar').onclick = () => borrarResena(miRes()));
+    $('#r-quitar') && ($('#r-quitar').onclick = () => quitarEstrellas());
   }
 
   async function enviarValoracion(estrellas, texto) {
     const cfg = E.cfg; texto = (texto || '').trim();
-    if (cfg.valoraciones && !estrellas) return avisar('Faltan las estrellas', 'Toca de 1 a 5 estrellas para valorar la obra.', '⭐');
     const anterior = miRes();
+    if (cfg.valoraciones && !estrellas && !anterior) return avisar('Faltan las estrellas', 'Toca de 1 a 5 estrellas para valorar la obra.', '⭐');
     if (texto && texto.length < 15) return avisar('Reseña muy corta', 'Escribe al menos una frase completa: qué te ha gustado o qué mejorarías.', '✍️');
     const malas = palabrasMalas(texto, true);
     if (malas.length) return avisar('Revisa tu reseña', `Cambia ${malas.map(m => '<b>' + esc(m) + '</b>').join(', ')}. En las reseñas se habla de la obra con respeto.`, '🙊');
@@ -1328,6 +1388,17 @@ VISTAS.leer = async (main, p) => {
       tostada(texto ? '¡Gracias! Tu opinión ya está publicada.' : '¡Valoración guardada!', 'ok');
       await cargarResenas(true); pintarValorar(); actualizarCabecera();
     } catch (e) { btn.disabled = false; avisar('No se ha podido guardar', mensajeError(e), '⚠️'); }
+  }
+  /* Quita la valoración: es como si no hubiera puntuado. Si tiene reseña, se queda sin estrellas. */
+  async function quitarEstrellas() {
+    if (!(await preguntar('¿Quitar tus estrellas?', 'Tu valoración dejará de contar, como si no hubieras puntuado.' + (miRes() ? ' Tu reseña se mantiene.' : ''), 'Quitar', 'Cancelar', true))) return;
+    const ws = [W.cambiar('lit_relatos/' + f.id, { votos: {} }, [campoMapa('votos', yo.uid)], { act: true })];
+    if (miRes()) ws.push(W.cambiar('lit_resenas/' + f.id + '_' + yo.uid, { estrellas: 0 }, ['estrellas']));
+    try {
+      await confirmar(ws);
+      const g = E.relatos[f.id]; g.votos = { ...(g.votos || {}) }; delete g.votos[yo.uid]; guardarCache(); delete E.resenasCache[f.id];
+      tostada('Estrellas quitadas'); await cargarResenas(true); pintarValorar(); actualizarCabecera();
+    } catch (e) { avisar('No se ha podido quitar', mensajeError(e), '⚠️'); }
   }
   async function borrarResena(r) {
     if (!r) return;
@@ -1366,7 +1437,7 @@ VISTAS.leer = async (main, p) => {
           ${r.estrellas ? htmlEstrellas(r.estrellas) : ''}</div>
         <p>${esc(r.texto)}</p>
         <div class="acts">
-          ${!propia && !r.avisada ? `<button class="btn txt peq" data-avisar="${esc(r.id)}">🚩 Avisar al maestro</button>` : ''}
+          ${!propia && !r.avisada && yo.rol !== 'anonimo' ? `<button class="btn txt peq" data-avisar="${esc(r.id)}">🚩 Avisar al maestro</button>` : ''}
         </div></article>`;
     }).join('')}</div>` : `<div class="vacio"><p>${mia ? 'Todavía nadie ha escrito una reseña de tu obra.' : 'Nadie ha escrito una reseña todavía. ¡Puedes ser el primero!'}</p></div>`;
     $$('[data-avisar]', caja).forEach(b => b.onclick = async () => {
@@ -1783,18 +1854,23 @@ VISTAS.perfil = async main => {
 /* =========================================================================
    ARRANQUE
    ========================================================================= */
-(async function arranque() {
+async function arranque() {
   const s = leerSesion();
-  if (!s) { reiniciarNav('login'); return; }
-  E.ses = s;
   $('#app').innerHTML = `<div class="login"><div class="caja"><div class="logo">${LOGO(76)}<h1>Biblioteca Siurot</h1><p>Abriendo la biblioteca…</p></div></div></div>`;
+  const abrirPublico = async () => {
+    try { await iniciarAnonimo(); }
+    catch (e) {
+      console.error(e);
+      $('#app').innerHTML = `<div class="login"><div class="caja"><div class="logo">${LOGO(76)}<h1>Biblioteca Siurot</h1></div><div class="hoja"><div class="err">${mensajeError(e)}</div><button class="btn" id="reint-ini" style="margin-top:12px">Reintentar</button></div></div></div>`;
+      $('#reint-ini').onclick = () => { $('#app').innerHTML = ''; arranque(); };
+    }
+  };
+  if (!s) { await abrirPublico(); return; }
+  E.ses = s;
   try { await iniciar(); }
-  catch (e) {
-    console.warn(e); borrarSesion(); E.ses = null; reiniciarNav('login');
-    if (e.cod !== 'RED') $('#l-err') && ($('#l-err').innerHTML = `<div class="err">${e.cod === 'NO_ALTA' ? esc(e.message) : 'Vuelve a entrar con tu usuario y clave.'}</div>`);
-    else $('#l-err') && ($('#l-err').innerHTML = `<div class="err">${mensajeError(e)}</div>`);
-  }
-})();
+  catch (e) { console.warn(e); borrarSesion(); E.ses = null; await abrirPublico(); }
+}
+arranque();
 
 </script>
 </body>
