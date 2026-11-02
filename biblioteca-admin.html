@@ -373,6 +373,8 @@ tr:hover td{background:#f7faf9}
 .elegido small{display:block;color:var(--gris)}
 .pestanas button{background:rgba(255,255,255,.14);border-color:transparent;color:#fff}
 .pestanas button.on{background:#fff;color:var(--pizarra);border-color:#fff}
+
+.o-sep{display:flex;align-items:center;gap:10px;margin:18px 0 14px;color:var(--gris);font-size:.9rem}.o-sep:before,.o-sep:after{content:'';flex:1;height:1px;background:var(--linea)}
 .tarjetas{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .tarj{border:1.5px dashed #888;border-radius:8px;padding:10px 12px;break-inside:avoid;font-size:12pt}
 .tarj b{display:block;font-size:13pt}.tarj span{color:#555;font-size:10pt}.tarj p{margin:4px 0 0}.tarj code{font-size:13pt;font-weight:700}
@@ -397,6 +399,14 @@ code.cl .cg{display:inline-block;width:.7em}
 code.cl .cl-l{font-weight:400;letter-spacing:.12em}
 
 .o-sep{display:flex;align-items:center;gap:10px;margin:16px 0 12px;color:var(--gris);font-size:.9rem}.o-sep:before,.o-sep:after{content:'';flex:1;height:1px;background:var(--linea)}
+
+/* Obras: tabla compacta, sin recortes; en pantallas pequeñas se desplaza de lado */
+.t-obras{table-layout:fixed;min-width:820px}
+.t-obras td,.t-obras th{padding:10px 10px;vertical-align:middle;overflow-wrap:anywhere}
+.t-obras td:last-child{white-space:nowrap;text-align:right;overflow-wrap:normal}
+.chip.corregida{background:#dff3e3;color:#16613a;font-weight:700;margin-top:4px;display:inline-block}
+.chip.pendiente{background:#f1f1ec;color:#6b6b60}
+.t-obras tr.fila-corr td:first-child{box-shadow:inset 4px 0 0 #2f9e5b}
 
 </style>
 </head>
@@ -530,7 +540,7 @@ async function pedir(url, opc = {}) {
 
 function guardarSesion() {
   const s = E.ses; if (!s) return;
-  const datos = JSON.stringify({ uid: s.uid, email: s.email, ref: s.ref, tok: s.tok, exp: s.exp });
+  const datos = JSON.stringify({ uid: s.uid, email: s.email, nombre: s.nombre || '', ref: s.ref, tok: s.tok, exp: s.exp });
   try {
     sessionStorage.setItem(PREF + 'ses', datos);
     if (s.recordar) localStorage.setItem(PREF + 'ses', datos); else localStorage.removeItem(PREF + 'ses');
@@ -572,9 +582,10 @@ function cargarGoogle() {
 async function entrarConGoogle(credencial) {
   const origen = /^https?:/.test(location.origin) ? location.origin : 'http://localhost';
   const j = await pedir(URL_IDP, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postBody: 'id_token=' + credencial + '&providerId=google.com', requestUri: origen, returnIdpCredential: true, returnSecureToken: true }) });
-  E.ses = { uid: j.localId, email: j.email, tok: j.idToken, ref: j.refreshToken, exp: ahora() + (+j.expiresIn) * 1000, recordar: true };
+  E.ses = { uid: j.localId, email: j.email, nombre: j.displayName || j.fullName || '', tok: j.idToken, ref: j.refreshToken, exp: ahora() + (+j.expiresIn) * 1000, recordar: true };
   guardarSesion();
 }
+const esCorreoAlumno = email => (email || '').toLowerCase().endsWith('@' + FB.dominio);
 
 async function token() {
   const s = E.ses; if (!s) throw new ErrorFB('Sesión cerrada', 'SIN_SESION', 401);
@@ -586,11 +597,10 @@ async function token() {
 }
 
 async function fs(metodo, ruta, cuerpo) {
-  const llamar = async () => pedir(URL_FS + ruta, {
-    method: metodo,
-    headers: { 'Authorization': 'Bearer ' + await token(), ...(cuerpo ? { 'Content-Type': 'application/json' } : {}) },
-    body: cuerpo ? JSON.stringify(cuerpo) : undefined
-  });
+  /* Sin sesión (lectura pública): se llama con la clave de la app y sin cabecera de autorización */
+  const llamar = async () => E.ses
+    ? pedir(URL_FS + ruta, { method: metodo, headers: { 'Authorization': 'Bearer ' + await token(), ...(cuerpo ? { 'Content-Type': 'application/json' } : {}) }, body: cuerpo ? JSON.stringify(cuerpo) : undefined })
+    : pedir(URL_FS + ruta + (ruta.includes('?') ? '&' : '?') + 'key=' + FB.apiKey, { method: metodo, headers: cuerpo ? { 'Content-Type': 'application/json' } : {}, body: cuerpo ? JSON.stringify(cuerpo) : undefined });
   try { return await llamar(); }
   catch (e) {
     if (e.estado === 401 && E.ses) { E.ses.exp = 0; return await llamar(); }
@@ -1013,7 +1023,7 @@ VISTAS.obras = async (main, p) => {
       <div class="chips" id="o-ciclos">${CICLOS.map(c => `<button data-c="${c.n}" class="${F.ciclo === c.n ? 'on' : ''}">${c.nombre}</button>`).join('')}</div>
       <div class="orden">
         <label><span class="sr">Curso</span><select id="o-curso">${cursosPosibles().map(c => `<option value="${c}" ${F.curso === c ? 'selected' : ''}>${c === cursoActual() ? 'Este curso' : 'Curso ' + c}</option>`).join('')}<option value="" ${F.curso === '' ? 'selected' : ''}>Todos los cursos</option></select></label>
-        <label><span class="sr">Estado</span><select id="o-estado"><option value="">Publicadas y borradores</option><option value="publicado">Solo publicadas</option><option value="borrador">Solo borradores</option></select></label>
+        <label><span class="sr">Estado</span><select id="o-estado"><option value="">Publicadas y borradores</option><option value="publicado">Solo publicadas</option><option value="borrador">Solo borradores</option><option value="sincorregir">Sin corregir</option><option value="corregida">Corregidas</option></select></label>
         <label><span class="sr">Orden</span><select id="o-orden"><option value="recientes">Más recientes</option><option value="valoradas">Mejor valoradas</option><option value="peores">Peor valoradas</option><option value="autor">Autor (A-Z)</option></select></label>
       </div>
       <div class="chips" id="o-grupos"></div>
@@ -1029,7 +1039,7 @@ VISTAS.obras = async (main, p) => {
   };
   const filtradas = () => {
     const q = normal(F.q.trim());
-    const l = ver().filter(f => (!F.grupo || f.autorGrupo === F.grupo) && (!F.estado || f.estado === F.estado) && (!q || normal(f.titulo + ' ' + f.autorNombre).includes(q)));
+    const l = ver().filter(f => (!F.grupo || f.autorGrupo === F.grupo) && (!F.estado || (F.estado === 'sincorregir' ? !f.corregida : F.estado === 'corregida' ? !!f.corregida : f.estado === F.estado)) && (!q || normal(f.titulo + ' ' + f.autorNombre).includes(q)));
     const pun = f => nVotos(f) ? media(f) : 99;
     l.sort({ recientes: (a, b) => (b.creado || 0) - (a.creado || 0), valoradas: (a, b) => media(b) - media(a) || nVotos(b) - nVotos(a), peores: (a, b) => pun(a) - pun(b), autor: (a, b) => comparaTexto(a.autorNombre, b.autorNombre) || comparaTexto(a.titulo, b.titulo) }[F.orden]);
     return l;
@@ -1037,10 +1047,10 @@ VISTAS.obras = async (main, p) => {
   const pintarLista = () => {
     const l = filtradas();
     $('#o-cont').textContent = l.length + (l.length === 1 ? ' obra' : ' obras');
-    $('#o-lista').innerHTML = l.length ? `<div class="tabla-wrap"><table><thead><tr><th>Título</th><th>Autor</th><th>Estado</th><th class="num">Nota</th><th class="num">Lecturas</th><th></th></tr></thead><tbody>${l.map(f => `<tr>
-      <td><b>${esc(f.titulo)}</b><br><small style="color:var(--gris)">${esc(f.genero || '')} · ${f.curso || ''}</small></td>
+    $('#o-lista').innerHTML = l.length ? `<div class="tabla-wrap"><table class="t-obras"><colgroup><col style="width:29%"><col style="width:19%"><col style="width:15%"><col style="width:8%"><col style="width:8%"><col style="width:21%"></colgroup><thead><tr><th>Título</th><th>Autor</th><th>Estado</th><th class="num">Nota</th><th class="num">Lecturas</th><th></th></tr></thead><tbody>${l.map(f => `<tr class="${f.corregida ? 'fila-corr' : ''}">
+      <td><b>${esc(f.titulo)}</b><br><small style="color:var(--gris)">${esc(f.genero || '')}${f.curso ? ' · ' + esc(f.curso) : ''}</small></td>
       <td><a href="#" data-autor="${esc(f.autorUid)}">${esc(f.autorNombre)}</a><br><small style="color:var(--gris)">${esc(f.autorGrupo || '')}</small></td>
-      <td><span class="chip ${f.estado}">${f.estado === 'publicado' ? 'Publicada' : 'Borrador'}</span></td>
+      <td><span class="chip ${f.estado}">${f.estado === 'publicado' ? 'Publicada' : 'Borrador'}</span>${f.corregida ? '<br><span class="chip corregida" title="Corregida ' + esc(fecha(f.corregida)) + '">✓ Corregida</span>' : ''}</td>
       <td class="num">${nVotos(f) ? nfmt(media(f)) + ' (' + nVotos(f) + ')' : '—'}</td><td class="num">${nLecturas(f)}</td>
       <td style="white-space:nowrap"><button class="btn peq" data-corr="${esc(f.id)}">Corregir</button> <button class="btn peq sec" data-est="${esc(f.id)}">${f.estado === 'publicado' ? 'Retirar' : 'Publicar'}</button> <button class="btn peq txt" data-del="${esc(f.id)}" aria-label="Borrar">🗑️</button></td></tr>`).join('')}</tbody></table></div>`
       : '<div class="vacio"><p>No hay obras con estos filtros.</p></div>';
@@ -1101,6 +1111,7 @@ VISTAS.corregir = async (main, p) => {
   main.innerHTML = `<div class="estrecho">
     <h1 style="font-size:1.9rem;margin-bottom:4px">Corregir obra</h1>
     <p style="margin:0 0 14px;color:var(--gris)">de ${esc(f.autorNombre)}, ${esc(f.autorGrupo || '')} · curso ${esc(f.curso || '')}. Los cambios se ven en la biblioteca al guardar.</p>
+    <p id="c-marca" style="margin:0 0 12px"></p>
     <label class="campo"><span>Título</span><input type="text" id="c-tit" class="titulo-in" maxlength="100" value="${esc(f.titulo)}"></label>
     <div class="grid2">
       <label class="campo"><span>Tipo de texto</span><select id="c-gen">${GENEROS.map(g => `<option ${g === f.genero ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
@@ -1148,12 +1159,20 @@ VISTAS.corregir = async (main, p) => {
     ocupado = true;
     try {
       const est = $('#c-est').value;
-      const datos = { titulo: titulo.slice(0, 100), genero: $('#c-gen').value, estado: est, palabras: contarPalabras(plano), extracto: plano.replace(/\s+/g, ' ').slice(0, 300), ver: (f.ver || 0) + 1, publicado: f.publicado || (est === 'publicado' ? ahora() : 0) };
+      const datos = { titulo: titulo.slice(0, 100), genero: $('#c-gen').value, estado: est, palabras: contarPalabras(plano), extracto: plano.replace(/\s+/g, ' ').slice(0, 300), ver: (f.ver || 0) + 1, corregida: ahora(), publicado: f.publicado || (est === 'publicado' ? ahora() : 0) };
       await confirmar([W.cambiar('lit_relatos/' + f.id, datos, Object.keys(datos), { act: true }), W.cambiar('lit_textos/' + f.id, { html: limpio, estado: est }, ['html', 'estado'])]);
-      Object.assign(f, datos); E.adm.obras[f.id] = f; meta0 = JSON.stringify([$('#c-tit').value, $('#c-gen').value, $('#c-est').value]);
+      Object.assign(f, datos); E.adm.obras[f.id] = f; pintarMarca(); meta0 = JSON.stringify([$('#c-tit').value, $('#c-gen').value, $('#c-est').value]);
       return true;
     } catch (e) { avisar('No se ha podido guardar', mensajeError(e), '⚠️'); return false; } finally { ocupado = false; }
   }
+  const pintarMarca = () => {
+    $('#c-marca').innerHTML = f.corregida ? `<span class="chip corregida">✓ Corregida</span> <small style="color:var(--gris)">${fecha(f.corregida)}</small> <button class="btn txt peq" id="c-desmarcar" type="button">Quitar marca</button>` : '<span class="chip pendiente">Sin corregir</span> <small style="color:var(--gris)">Al guardar quedará marcada como corregida, aunque no cambies nada.</small>';
+    $('#c-desmarcar') && ($('#c-desmarcar').onclick = async () => {
+      try { await confirmar([W.cambiar('lit_relatos/' + f.id, { corregida: 0 }, ['corregida'], { act: true })]); f.corregida = 0; E.adm.obras[f.id] = f; pintarMarca(); tostada('Marca quitada'); }
+      catch (e) { avisar('No se ha podido quitar la marca', mensajeError(e), '⚠️'); }
+    });
+  };
+  pintarMarca();
   let html1 = html0; const hc = () => ed.innerHTML !== html1 || JSON.stringify([$('#c-tit').value, $('#c-gen').value, $('#c-est').value]) !== meta0;
   $('#c-guardar').onclick = async () => { if (await guardar()) { html1 = ed.innerHTML; tostada('Corrección guardada', 'ok'); } };
   guardaSalida = async () => {
@@ -1413,7 +1432,7 @@ VISTAS.alumno = async (main, p) => {
       <div class="cifra"><b>${pub.length}</b><span>obras publicadas</span></div><div class="cifra"><b>${obras.length - pub.length}</b><span>borradores</span></div>
       <div class="cifra"><b>${pub.reduce((a, f) => a + (f.palabras || 0), 0)}</b><span>palabras</span></div><div class="cifra"><b>${votos.length ? nfmt(votos.reduce((a, b) => a + b, 0) / votos.length) : '—'}</b><span>nota media</span></div>
       <div class="cifra"><b>${resenas.length}</b><span>reseñas escritas</span></div></div>
-    <section class="seccion"><h2>📚 Obras</h2>${obras.length ? `<div class="tabla-wrap"><table><thead><tr><th>Título</th><th>Curso</th><th>Estado</th><th class="num">Nota</th><th class="num">Lecturas</th><th></th></tr></thead><tbody>${obras.map(f => `<tr><td><b>${esc(f.titulo)}</b><br><small style="color:var(--gris)">${esc(f.genero || '')} · ${f.palabras || 0} palabras</small></td><td>${esc(f.curso || '')}</td><td><span class="chip ${f.estado}">${f.estado === 'publicado' ? 'Publicada' : 'Borrador'}</span></td><td class="num">${nVotos(f) ? nfmt(media(f)) + ' (' + nVotos(f) + ')' : '—'}</td><td class="num">${nLecturas(f)}</td><td><button class="btn peq" data-corr="${esc(f.id)}">Corregir</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="vacio"><p>Todavía no ha subido nada.</p></div>'}</section>
+    <section class="seccion"><h2>📚 Obras</h2>${obras.length ? `<div class="tabla-wrap"><table><thead><tr><th>Título</th><th>Curso</th><th>Estado</th><th class="num">Nota</th><th class="num">Lecturas</th><th></th></tr></thead><tbody>${obras.map(f => `<tr><td><b>${esc(f.titulo)}</b><br><small style="color:var(--gris)">${esc(f.genero || '')} · ${f.palabras || 0} palabras</small></td><td>${esc(f.curso || '')}</td><td><span class="chip ${f.estado}">${f.estado === 'publicado' ? 'Publicada' : 'Borrador'}</span>${f.corregida ? ' <span class="chip corregida">✓ Corregida</span>' : ''}</td><td class="num">${nVotos(f) ? nfmt(media(f)) + ' (' + nVotos(f) + ')' : '—'}</td><td class="num">${nLecturas(f)}</td><td><button class="btn peq" data-corr="${esc(f.id)}">Corregir</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="vacio"><p>Todavía no ha subido nada.</p></div>'}</section>
     <section class="seccion"><h2>💬 Reseñas que ha escrito</h2>${resenas.length ? `<div class="resenas">${resenas.map(r => `<article class="resena ${r.avisada ? 'avisada' : ''}"><p><b>${r.estrellas ? htmlEstrellas(r.estrellas) : ''}</b> ${esc(r.texto)}</p><small style="color:var(--gris)">${fecha(r.fecha)}</small></article>`).join('')}</div>` : '<div class="vacio"><p>Aún no ha escrito reseñas.</p></div>'}</section>`;
   $$('[data-corr]', main).forEach(b => b.onclick = () => ir('corregir', { id: b.dataset.corr }));
   $('#v-ver') && ($('#v-ver').onclick = () => { const c = $('#v-cl'), ver = c.textContent.includes('•'); c.textContent = ver ? uDoc.clave : '••••••'; $('#v-ver').textContent = ver ? 'Ocultar' : 'Mostrar'; });
