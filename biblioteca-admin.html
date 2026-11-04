@@ -889,7 +889,7 @@ function LOGO(t) {
 }
 const nombreCorto = n => { const p = String(n || '').trim().split(/\s+/); return p.length > 1 ? p[0] + ' ' + p[1][0].toUpperCase() + '.' : p[0] || ''; };
 const cursosPosibles = () => { const a = +cursoEscolar().slice(0, 4); return [0, 1, 2, 3, 4].map(i => (a - i) + '-' + String(a - i + 1).slice(2)); };
-const cursoActual = () => (E.cfg && E.cfg.curso) || cursoEscolar();
+const cursoActual = () => cursoEscolar();   // siempre por la fecha (septiembre-agosto), sin ajuste manual
 const votosDe = f => Object.values(f.votos || {}).filter(n => n >= 1 && n <= 5);
 const media = f => { const v = votosDe(f); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
 const nVotos = f => votosDe(f).length;
@@ -1471,7 +1471,7 @@ VISTAS.limpieza = async main => {
   main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:4px">Limpieza</h1>
     <p style="margin:0 0 16px;color:var(--gris);max-width:62ch">Busca obras de cursos anteriores con poca valoración y decide cuáles borrar. Puedes guardar una copia antes (archivo con los textos). Borrar es definitivo.</p>
     <div class="hoja" style="margin:0 0 16px"><div class="grid2">
-      <label class="campo"><span>Curso</span><select id="l-cur">${antiguos.map(c => `<option>${c}</option>`).join('')}</select></label>
+      <label class="campo"><span>Curso anterior</span><select id="l-cur"><option value="">Elige un curso anterior</option>${antiguos.map(c => `<option>${c}</option>`).join('')}</select></label>
       <label class="campo"><span>Ciclo</span><select id="l-cic"><option value="0">Todos</option>${CICLOS.map(c => `<option value="${c.n}">${c.nombre}</option>`).join('')}</select></label>
       <label class="campo"><span>Nota media menor que</span><select id="l-nota"><option>2</option><option>2.5</option><option selected>3</option><option>3.5</option><option>4</option></select></label>
       <label class="check" style="align-self:end;margin-bottom:12px"><input type="checkbox" id="l-sin" checked> <span>Incluir las que no tienen votos</span></label></div>
@@ -1484,6 +1484,7 @@ VISTAS.limpieza = async main => {
       <div class="fila fin" style="margin-top:12px"><button class="btn sec" id="l-copia">⬇️ Guardar copia (${sel})</button><button class="btn rojo" id="l-borrar">🗑️ Borrar ${sel} ${sel === 1 ? 'obra' : 'obras'}</button></div>` : '<div class="vacio"><p>No hay obras que cumplan estas condiciones.</p></div>';
   };
   $('#l-buscar').onclick = async () => {
+    if (!$('#l-cur').value) return avisar('Elige un curso', 'Selecciona el curso anterior en el que quieres buscar. El curso actual no se limpia.', '🧹');
     const b = $('#l-buscar'); b.disabled = true; $('#l-res').innerHTML = cargando('Buscando…');
     try {
       const cic = +$('#l-cic').value, umbral = parseFloat($('#l-nota').value), sin = $('#l-sin').checked;
