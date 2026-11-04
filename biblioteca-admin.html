@@ -1521,18 +1521,28 @@ VISTAS.admins = async main => {
   const pintar = () => {
     main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:6px">Administradores</h1>
       <p class="nota" style="margin-bottom:16px">Quien añadas aquí entra con su cuenta de Google (por ejemplo la educativa) y puede gestionar obras, alumnado, reseñas y limpieza. Solo tú puedes añadir o quitar administradores.</p>
-      <section class="seccion"><h2>Añadir</h2><form id="ad-f" class="fila"><input type="email" id="ad-e" placeholder="correo@dominio.es" autocapitalize="none" spellcheck="false" required><button class="btn" id="ad-b">Añadir</button></form></section>
+      <section class="seccion"><h2>Añadir</h2><form id="ad-f"><label class="campo"><span>Un correo por línea</span><textarea id="ad-e" rows="5" placeholder="maria@colegio.es&#10;pedro@colegio.es&#10;lucia@colegio.es" autocapitalize="none" spellcheck="false" required></textarea></label><button class="btn" id="ad-b">Añadir</button></form></section>
       <section class="seccion"><h2>Con acceso</h2><div class="tabla-wrap"><table><tbody>
         <tr><td><b>${esc(FB.admins[0])}</b></td><td><small style="color:var(--gris)">Propietario</small></td><td></td></tr>
         ${lista.map(x => `<tr><td>${esc(x.email)}</td><td><small style="color:var(--gris)">Administrador</small></td><td style="text-align:right"><button class="btn peq sec" data-quitar="${esc(x.email)}">Quitar</button></td></tr>`).join('')}
       </tbody></table></div></section>`;
     $('#ad-f').onsubmit = async ev => {
-      ev.preventDefault(); const e = $('#ad-e').value.trim().toLowerCase();
-      if (!/^[^\s@\/]+@[^\s@\/]+\.[^\s@\/]+$/.test(e)) return avisar('Correo no válido', 'Escribe un correo completo.', '✉️');
-      if (FB.admins.includes(e) || lista.some(x => x.email === e)) return avisar('Ya tiene acceso', e, 'ℹ️');
+      ev.preventDefault();
+      const crudos = $('#ad-e').value.split(/[\s,;]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+      const validos = [], saltados = [];
+      [...new Set(crudos)].forEach(e => {
+        if (!/^[^\s@\/]+@[^\s@\/]+\.[^\s@\/]+$/.test(e)) saltados.push(e + ' (no es un correo válido)');
+        else if (FB.admins.includes(e) || lista.some(x => x.email === e)) saltados.push(e + ' (ya tenía acceso)');
+        else validos.push(e);
+      });
+      if (!validos.length) return avisar('Nada que añadir', saltados.length ? saltados.join('\n') : 'Escribe al menos un correo.', '✉️');
       $('#ad-b').disabled = true;
-      try { await confirmar([W.poner('lit_admins/' + e, { email: e, alta: ahora() })]); lista.push({ id: e, email: e }); lista.sort((x, y) => x.email.localeCompare(y.email)); tostada('Administrador añadido'); pintar(); }
-      catch (er) { avisar('No se ha podido añadir', mensajeError(er), '⚠️'); $('#ad-b').disabled = false; }
+      try {
+        await confirmar(validos.map(e => W.poner('lit_admins/' + e, { email: e, alta: ahora() })));
+        validos.forEach(e => lista.push({ id: e, email: e })); lista.sort((x, y) => x.email.localeCompare(y.email));
+        tostada(validos.length === 1 ? 'Administrador añadido' : validos.length + ' administradores añadidos'); pintar();
+        if (saltados.length) avisar('Algunos correos se han saltado', saltados.join('\n'), 'ℹ️');
+      } catch (er) { avisar('No se ha podido añadir', mensajeError(er), '⚠️'); $('#ad-b').disabled = false; }
     };
     $$('[data-quitar]', main).forEach(b => b.onclick = async () => {
       const e = b.dataset.quitar;
