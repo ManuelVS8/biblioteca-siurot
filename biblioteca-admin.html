@@ -1040,7 +1040,8 @@ VISTAS.inicio = async main => {
    OBRAS
    ========================================================================= */
 VISTAS.obras = async (main, p) => {
-  const F = { ciclo: p.ciclo || E.ultCiclo || 0, curso: p.curso !== undefined ? p.curso : (E.ultCurso !== undefined ? E.ultCurso : cursoActual()), grupo: '', estado: p.estado || '', q: '', orden: 'recientes' };
+  const F = { ciclo: p.ciclo || E.ultCiclo || 0, curso: p.curso !== undefined ? p.curso : (E.ultCurso !== undefined ? E.ultCurso : cursoActual()), grupo: '', estado: p.estado || '', q: '', orden: 'recientes', ...(E.ultF || {}) };
+  if (p.estado) F.estado = p.estado;
   main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:14px">Obras</h1>
     <div class="filtros">
       <div class="chips" id="o-ciclos">${CICLOS.map(c => `<button data-c="${c.n}" class="${F.ciclo === c.n ? 'on' : ''}">${c.nombre}</button>`).join('')}</div>
@@ -1055,6 +1056,7 @@ VISTAS.obras = async (main, p) => {
     <div class="fila" style="justify-content:space-between;margin:10px 0"><p class="contador" id="o-cont" style="margin:0"></p>
       <span class="fila"><button class="btn peq sec" id="o-act">↻ Actualizar</button><button class="btn peq sec" id="o-ant" title="Reúne las obras publicadas que ves en un libro con portada e índice, listo para imprimir o guardar como PDF">📖 Libro en PDF</button></span></div>
     <div id="o-lista"></div>`;
+  $('#o-estado').value = F.estado; $('#o-orden').value = F.orden; $('#o-q').value = F.q;
   const ver = () => obrasDe(F.ciclo, F.curso);
   const pintarGrupos = () => {
     const gs = [...new Set(ver().map(f => f.autorGrupo).filter(Boolean))].sort(comparaTexto); if (F.grupo && !gs.includes(F.grupo)) F.grupo = '';
@@ -1068,6 +1070,7 @@ VISTAS.obras = async (main, p) => {
     return l;
   };
   const pintarLista = () => {
+    E.ultF = { grupo: F.grupo, estado: F.estado, q: F.q, orden: F.orden };
     const l = filtradas();
     $('#o-cont').textContent = l.length + (l.length === 1 ? ' obra' : ' obras');
     $('#o-lista').innerHTML = l.length ? `<div class="tabla-wrap"><table class="t-obras"><colgroup><col style="width:29%"><col style="width:19%"><col style="width:15%"><col style="width:8%"><col style="width:8%"><col style="width:21%"></colgroup><thead><tr><th>Título</th><th>Autor</th><th>Estado</th><th class="num">Nota</th><th class="num">Lecturas</th><th></th></tr></thead><tbody>${l.map(f => `<tr class="${f.corregida ? 'fila-corr' : ''}">
