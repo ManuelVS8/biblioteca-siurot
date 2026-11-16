@@ -403,11 +403,30 @@ code.cl .cl-l{font-weight:400;letter-spacing:.12em}
 
 /* Obras: tabla compacta, sin recortes; en pantallas pequeñas se desplaza de lado */
 .t-obras{table-layout:fixed;min-width:820px}
-.t-obras td,.t-obras th{padding:10px 10px;vertical-align:middle;overflow-wrap:anywhere}
+.t-obras td,.t-obras th{padding:10px 10px;vertical-align:middle;overflow-wrap:anywhere;white-space:normal}
 .t-obras td:last-child{white-space:nowrap;text-align:right;overflow-wrap:normal}
 .chip.corregida{background:#dff3e3;color:#16613a;font-weight:700;margin-top:4px;display:inline-block}
 .chip.pendiente{background:#f1f1ec;color:#6b6b60}
 .t-obras tr.fila-corr td:first-child{box-shadow:inset 4px 0 0 #2f9e5b}
+
+/* Móvil: cada obra es una tarjeta, sin desplazamiento lateral ni textos superpuestos */
+@media (max-width:700px){
+  .t-obras{display:block;min-width:0;table-layout:auto}
+  .t-obras colgroup,.t-obras thead{display:none}
+  .t-obras tbody{display:block}
+  .t-obras tr{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;padding:12px 14px;border-bottom:1px solid var(--linea)}
+  .t-obras tr:last-child{border-bottom:0}
+  .t-obras td{display:block;border:0;padding:0;text-align:left}
+  .t-obras td:first-child{flex:1 1 100%;font-size:1.02rem}
+  .t-obras td:nth-child(2){flex:1 1 100%}
+  .t-obras td.num{text-align:left;color:var(--gris);font-size:.9rem}
+  .t-obras td.num[data-l]:before{content:attr(data-l) ' ';opacity:.8}
+  .t-obras td:last-child{flex:1 1 100%;text-align:left;white-space:normal;margin-top:6px}
+  .t-obras td:last-child .btn{margin:0 6px 6px 0}
+  .t-obras tr.fila-corr td:first-child{box-shadow:none}
+  .t-obras tr.fila-corr{box-shadow:inset 4px 0 0 #2f9e5b}
+  .tabla-wrap:has(.t-obras){overflow:visible}
+}
 
 </style>
 </head>
@@ -1055,8 +1074,8 @@ VISTAS.obras = async (main, p) => {
       <td><b>${esc(f.titulo)}</b><br><small style="color:var(--gris)">${esc(f.genero || '')}${f.curso ? ' · ' + esc(f.curso) : ''}</small></td>
       <td><a href="#" data-autor="${esc(f.autorUid)}">${esc(f.autorNombre)}</a><br><small style="color:var(--gris)">${esc(f.autorGrupo || '')}</small></td>
       <td><span class="chip ${f.estado}">${NOM_EST[f.estado] || f.estado}</span>${f.corregida ? '<br><span class="chip corregida" title="Corregida ' + esc(fecha(f.corregida)) + '">✓ Corregida</span>' : ''}</td>
-      <td class="num">${nVotos(f) ? nfmt(media(f)) + ' (' + nVotos(f) + ')' : '—'}</td><td class="num">${nLecturas(f)}</td>
-      <td style="white-space:nowrap"><button class="btn peq" data-corr="${esc(f.id)}">Corregir</button> <button class="btn peq sec" data-est="${esc(f.id)}">${f.estado === 'publicado' ? 'Retirar' : 'Publicar'}</button> <button class="btn peq txt" data-del="${esc(f.id)}" aria-label="Borrar">🗑️</button></td></tr>`).join('')}</tbody></table></div>`
+      <td class="num" data-l="Nota:">${nVotos(f) ? nfmt(media(f)) + ' (' + nVotos(f) + ')' : '—'}</td><td class="num" data-l="Lecturas:">${nLecturas(f)}</td>
+      <td><button class="btn peq" data-corr="${esc(f.id)}">Corregir</button> <button class="btn peq sec" data-est="${esc(f.id)}">${f.estado === 'publicado' ? 'Retirar' : 'Publicar'}</button> <button class="btn peq txt" data-del="${esc(f.id)}" aria-label="Borrar">🗑️</button></td></tr>`).join('')}</tbody></table></div>`
       : '<div class="vacio"><p>No hay obras con estos filtros.</p></div>';
   };
   async function cambiar(forzar) {
@@ -1486,7 +1505,7 @@ VISTAS.pendientes = async main => {
     main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:4px">Pendientes de revisión</h1>
       <p style="margin:0 0 16px;color:var(--gris);max-width:62ch">Obras que el alumnado ha enviado. Hasta que las publiques solo las ven sus autores y tú. Las más antiguas, primero.</p>
       ${gs.length > 1 ? `<div class="chips" id="p-grupos" style="margin-bottom:14px"><button data-g="" class="${!g ? 'on' : ''}">Todos</button>${gs.map(x => `<button data-g="${esc(x)}" class="${g === x ? 'on' : ''}">${esc(x)}</button>`).join('')}</div>` : ''}
-      ${lv.length ? `<div class="tabla-wrap"><table class="t-obras"><thead><tr><th>Título</th><th>Autor</th><th>Grupo</th><th class="num">Palabras</th><th></th></tr></thead><tbody>${lv.map(f => `<tr><td><b>${esc(f.titulo)}</b><br><small style="color:var(--gris)">${esc(f.genero || '')}</small></td><td>${esc(f.autorNombre)}</td><td>${esc(f.autorGrupo || '')}</td><td class="num">${f.palabras || 0}</td><td><button class="btn peq" data-corr="${esc(f.id)}">Corregir</button> <button class="btn peq sec" data-pub="${esc(f.id)}" title="Publicar sin cambiar nada">Publicar</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="vacio"><p>No hay obras esperando revisión. 🎉</p></div>'}
+      ${lv.length ? `<div class="tabla-wrap"><table class="t-obras"><thead><tr><th>Título</th><th>Autor</th><th>Grupo</th><th class="num">Palabras</th><th></th></tr></thead><tbody>${lv.map(f => `<tr><td><b>${esc(f.titulo)}</b><br><small style="color:var(--gris)">${esc(f.genero || '')}</small></td><td>${esc(f.autorNombre)}</td><td>${esc(f.autorGrupo || '')}</td><td class="num" data-l="Palabras:">${f.palabras || 0}</td><td><button class="btn peq" data-corr="${esc(f.id)}">Corregir</button> <button class="btn peq sec" data-pub="${esc(f.id)}" title="Publicar sin cambiar nada">Publicar</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="vacio"><p>No hay obras esperando revisión. 🎉</p></div>'}
       <div class="fila" style="margin-top:22px"><button class="btn peq sec" id="p-devolver" title="Para las obras que ya estaban publicadas antes de este cambio">↩ Devolver a revisión las publicadas sin corregir</button></div>`;
     $$('#p-grupos button', main).forEach(b => b.onclick = () => { g = b.dataset.g; pinta(); });
     $$('[data-corr]', main).forEach(b => b.onclick = () => ir('corregir', { id: b.dataset.corr }));
