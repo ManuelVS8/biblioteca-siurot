@@ -86,6 +86,7 @@ textarea{resize:vertical;min-height:110px;line-height:1.5}
 .vacio .btn{margin-top:12px}
 .chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 10px;font-size:.8rem;font-weight:600;background:var(--papel);color:var(--pizarra)}
 .chip.borrador{background:#eceff0;color:#4b5759}
+.chip.pendiente{background:#fff2cc;color:#7a5800}
 .chip.publicado{background:#dff1e6;color:#1f6b40}
 .chip.revisar{background:#fbe3e0;color:#9d2c20}
 .chip.reto{background:#fff2cc;color:#7a5800}
@@ -848,7 +849,7 @@ window.addEventListener('afterprint', () => { document.body.classList.remove('im
 /* =========================================================================
    DATOS: caché de fichas por alcance (ciclo + curso) con sincronización incremental
    ========================================================================= */
-const cursoActual = () => (E.cfg && E.cfg.curso) || cursoEscolar();
+const cursoActual = () => cursoEscolar();   // siempre por la fecha (septiembre-agosto), sin ajuste manual
 function cargarCache() {
   const c = ls.get('cache', null);
   if (c && c.v === 3) { E.relatos = c.docs || {}; E.sync = c.sync || null; E.cargados = c.cargados || []; }
@@ -1242,7 +1243,7 @@ VISTAS.leer = async (main, p) => {
   const prefs = ls.get('lectura', { zoom: 1, tema: '' });
 
   main.innerHTML = `<div class="estrecho">
-    ${f.estado !== 'publicado' ? `<div class="aviso" style="margin:0 0 14px"><span class="ic">📝</span><p>Esto es un borrador. Todavía no está en la biblioteca.</p></div>` : ''}
+    ${f.estado === 'pendiente' ? `<div class="aviso" style="margin:0 0 14px"><span class="ic">⏳</span><p>Esta obra está en revisión. Cuando tu maestro la revise, se publicará en la biblioteca.</p></div>` : f.estado !== 'publicado' ? `<div class="aviso" style="margin:0 0 14px"><span class="ic">📝</span><p>Esto es un borrador. Todavía no está en la biblioteca.</p></div>` : ''}
     <article class="ficha">
       <div class="mini">${tapa(f, { mostrarAutor: false })}</div>
       <div class="info">
@@ -1535,8 +1536,8 @@ VISTAS.editor = async (main, p) => {
     <div class="editor-pie"><span id="e-cuenta">0 palabras</span><span class="guardado" id="e-estado"></span>
       <button class="btn txt peq" id="tb-txt" style="margin-left:auto">📂 Traer texto de un archivo .txt</button><input type="file" id="e-file" accept=".txt,text/plain" class="oculto"></div>
     <div class="botonera">
-      ${estado === 'publicado' ? '<button class="btn sec" id="e-retirar">Pasar a borrador</button>' : '<button class="btn sec" id="e-guardar">Guardar borrador</button>'}
-      <button class="btn amar" id="e-publicar">${estado === 'publicado' ? 'Guardar cambios' : 'Publicar'}</button>
+      ${estado === 'publicado' || estado === 'pendiente' ? '<button class="btn sec" id="e-retirar">Pasar a borrador</button>' : '<button class="btn sec" id="e-guardar">Guardar borrador</button>'}
+      <button class="btn amar" id="e-publicar">${estado === 'publicado' ? 'Enviar cambios a revisión' : estado === 'pendiente' ? 'Guardar cambios' : 'Enviar a revisión'}</button>
     </div>
   </div>`;
 
@@ -1638,8 +1639,9 @@ VISTAS.editor = async (main, p) => {
       const datosFicha = {
         titulo: (meta.titulo.trim() || 'Sin título').slice(0, 100), genero: meta.genero, emoji: meta.emoji, color: meta.color,
         estado: est, palabras, extracto, ver: ((actual && actual.ver) || 0) + 1,
-        publicado: est === 'publicado' ? ((actual && actual.publicado) || ahora()) : ((actual && actual.publicado) || 0)
+        publicado: (actual && actual.publicado) || 0
       };
+      if (est === 'pendiente') datosFicha.corregida = 0;
       const ws = [];
       if (!existe) {
         const autor = { autorUid: yo.uid, autorNombre: yo.nombre, autorGrupo: yo.grupo, ciclo: yo.ciclo, curso: cursoActual() };
@@ -1653,7 +1655,6 @@ VISTAS.editor = async (main, p) => {
       const nueva = { ...(actual || {}), ...datosFicha, id };
       if (!existe) Object.assign(nueva, { autorUid: yo.uid, autorNombre: yo.nombre, autorGrupo: yo.grupo, ciclo: yo.ciclo, curso: cursoActual() }, { creado: ahora(), votos: {}, leido: {}, res: {} });
       E.relatos[id] = nueva; guardarCache();
-      if (est === 'publicado') guardarTextoCache(id, nueva.ver, { html: limpio, estado: est });
       ultimoGuardado = { html: ed.innerHTML, meta: JSON.stringify(meta) }; sucio = false; ls.del(claveBorrador); ultimaNube = ahora();
       estadoTxt('✓ Guardado ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
       return true;
@@ -1681,38 +1682,42 @@ VISTAS.editor = async (main, p) => {
   });
   $('#e-retirar') && $('#e-retirar').addEventListener('click', async () => {
     if (!validar(false)) return;
-    if (!(await preguntar('¿Pasar a borrador?', 'La obra dejará de verse en la biblioteca hasta que la vuelvas a publicar. Sus votos y reseñas se conservan.', 'Pasar a borrador'))) return;
+    if (!(await preguntar('¿Pasar a borrador?', estadoActual() === 'publicado' ? 'La obra dejará de verse en la biblioteca hasta que la vuelvas a enviar a revisión. Sus votos y reseñas se conservan.' : 'La obra dejará de estar en revisión hasta que la vuelvas a enviar.', 'Pasar a borrador'))) return;
     if (await guardarNube('borrador')) { tostada('Ahora es un borrador'); guardaSalida = null; atras(); }
   });
   $('#e-publicar').addEventListener('click', async () => {
     if (!validar(true)) return;
-    const yaPub = estadoActual() === 'publicado';
-    if (!yaPub && !(await modal({ titulo: '¿Publicar tu obra?', icono: '📚', html: `<p>«${esc(meta.titulo)}» aparecerá en la biblioteca y tus compañeros podrán leerla, valorarla y escribir reseñas.</p><p style="color:var(--gris)">Antes de publicar, repasa la ortografía. Después podrás seguir editándola.</p>`, botones: [{ t: 'Repasar antes', v: false, c: 'sec' }, { t: 'Publicar', v: true, c: 'amar' }] }))) return;
-    if (await guardarNube('publicado')) {
-      tostada(yaPub ? 'Cambios guardados' : '¡Publicada! Ya está en la biblioteca 🎉', 'ok');
-      guardaSalida = null;
-      if (!yaPub) { NAV[NAV.length - 1] = { vista: 'leer', p: { id } }; pintar(); } else atras();
+    const est0 = estadoActual();
+    if (est0 === 'pendiente') { if (await guardarNube('pendiente')) { tostada('Cambios guardados. Siguen en revisión.', 'ok'); guardaSalida = null; atras(); } return; }
+    const yaPub = est0 === 'publicado';
+    const cuerpo = yaPub
+      ? `<p>«${esc(meta.titulo)}» dejará de verse en la biblioteca hasta que tu maestro revise los cambios.</p><p style="color:var(--gris)">Sus votos y reseñas se conservan.</p>`
+      : `<p>«${esc(meta.titulo)}» se enviará a tu maestro. Cuando la revise, aparecerá en la biblioteca y tus compañeros podrán leerla, valorarla y escribir reseñas.</p><p style="color:var(--gris)">Repasa la ortografía antes de enviarla. Mientras esté en revisión, solo la verás tú.</p>`;
+    if (!(await modal({ titulo: yaPub ? '¿Enviar los cambios a revisión?' : '¿Enviar tu obra a revisión?', icono: '📚', html: cuerpo, botones: [{ t: 'Repasar antes', v: false, c: 'sec' }, { t: 'Enviar a revisión', v: true, c: 'amar' }] }))) return;
+    if (await guardarNube('pendiente')) {
+      tostada('¡Enviada a tu maestro! Se publicará cuando la revise 🎉', 'ok');
+      guardaSalida = null; atras();
     }
   });
   // autoguardado en la nube de los borradores (cada 2 min si hay cambios)
   const temporizador = setInterval(() => {
     if (!document.body.contains(ed)) { clearInterval(temporizador); return; }
     const est = estadoActual();
-    if (sucio && est !== 'publicado' && ahora() - ultimaNube > 120000 && meta.titulo.trim() && textoPlano(ed.innerHTML) && !palabrasMalas(meta.titulo + ' ' + textoPlano(ed.innerHTML)).length) guardarNube('borrador', { silencioso: true });
+    if (sucio && est !== 'publicado' && est !== 'pendiente' && ahora() - ultimaNube > 120000 && meta.titulo.trim() && textoPlano(ed.innerHTML) && !palabrasMalas(meta.titulo + ' ' + textoPlano(ed.innerHTML)).length) guardarNube('borrador', { silencioso: true });
   }, 15000);
   // al salir con cambios
   guardaSalida = async () => {
     clearTimeout(tLocal); guardarLocal();
     if (!hayCambios()) { clearInterval(temporizador); return true; }
     const est = estadoActual();
-    if (est !== 'publicado' && meta.titulo.trim() && textoPlano(ed.innerHTML) && !palabrasMalas(meta.titulo + ' ' + textoPlano(ed.innerHTML)).length) {
+    if (est !== 'publicado' && est !== 'pendiente' && meta.titulo.trim() && textoPlano(ed.innerHTML) && !palabrasMalas(meta.titulo + ' ' + textoPlano(ed.innerHTML)).length) {
       const ok = await guardarNube('borrador', { silencioso: true });
       tostada(ok ? 'Borrador guardado' : 'Guardado solo en este ordenador'); clearInterval(temporizador); return true;
     }
-    const r = await modal({ titulo: 'Tienes cambios sin guardar', icono: '💾', html: `<p>${est === 'publicado' ? 'Los cambios no se verán en la biblioteca hasta que pulses «Guardar cambios».' : 'Si sales ahora, los cambios se quedan solo en este ordenador.'}</p>`,
-      botones: [{ t: 'Seguir escribiendo', v: 'seguir', c: 'sec' }, { t: 'Salir sin guardar', v: 'salir', c: 'sec' }, ...(est === 'publicado' ? [{ t: 'Guardar y salir', v: 'guardar' }] : [])] });
+    const r = await modal({ titulo: 'Tienes cambios sin guardar', icono: '💾', html: `<p>${est === 'publicado' ? 'Los cambios no se guardarán hasta que pulses «Enviar cambios a revisión».' : est === 'pendiente' ? 'Los cambios no se guardarán hasta que pulses «Guardar cambios».' : 'Si sales ahora, los cambios se quedan solo en este ordenador.'}</p>`,
+      botones: [{ t: 'Seguir escribiendo', v: 'seguir', c: 'sec' }, { t: 'Salir sin guardar', v: 'salir', c: 'sec' }, ...(est === 'publicado' || est === 'pendiente' ? [{ t: est === 'publicado' ? 'Enviar a revisión y salir' : 'Guardar y salir', v: 'guardar' }] : [])] });
     if (r === 'salir') { ls.del(claveBorrador); clearInterval(temporizador); return true; }
-    if (r === 'guardar') { if (!validar(true)) return false; const ok = await guardarNube('publicado'); if (ok) clearInterval(temporizador); return ok; }
+    if (r === 'guardar') { if (!validar(true)) return false; const ok = await guardarNube('pendiente'); if (ok) clearInterval(temporizador); return ok; }
     return false;
   };
   if (!f) $('#e-tit').focus(); else { ed.focus(); const s = getSelection(); s.selectAllChildren(ed); s.collapseToEnd(); }
@@ -1743,7 +1748,7 @@ VISTAS.misobras = async main => {
   const mias = Object.values(E.relatos).filter(f => esMia(f) && f.estado !== 'borrado')
     .sort((a, b) => (b.creado || 0) - (a.creado || 0));
   const vistoRes = ls.get('vistoRes.' + E.yo.uid, 0);
-  const NOMBRE_ESTADO = { borrador: 'Borrador', publicado: 'Publicada' };
+  const NOMBRE_ESTADO = { borrador: 'Borrador', pendiente: 'En revisión', publicado: 'Publicada' };
   main.innerHTML = `<div class="estrecho">
     <div class="fila" style="justify-content:space-between;margin-bottom:16px"><h1 style="font-size:2rem">Mis obras</h1>
       ${E.cfg.escritura ? '<button class="btn amar" id="nueva">✍️ Escribir una nueva</button>' : ''}</div>
@@ -1756,7 +1761,7 @@ VISTAS.misobras = async main => {
             ${f.estado === 'publicado' ? `<span>${nVotos(f) ? htmlEstrellas(media(f)) + ' ' + nfmt(media(f)) + ' (' + nVotos(f) + ')' : 'Sin votos'}</span><span>👀 ${nLecturas(f)}</span><span>💬 ${nResenas(f)}${nuevas ? ` <b style="color:var(--verde)">(${nuevas} nueva${nuevas > 1 ? 's' : ''})</b>` : ''}</span>` : `<span>${f.palabras || 0} palabras</span>`}
           </div></div>
         <div class="bts">
-          ${f.estado === 'publicado' ? `<button class="btn peq sec" data-leer="${esc(f.id)}">Abrir</button>` : ''}
+          ${f.estado === 'publicado' || f.estado === 'pendiente' ? `<button class="btn peq sec" data-leer="${esc(f.id)}">Abrir</button>` : ''}
           <button class="btn peq" data-editar="${esc(f.id)}">Editar</button>
           <button class="btn peq txt" data-borrar="${esc(f.id)}" aria-label="Borrar">🗑️</button>
         </div></article>`;

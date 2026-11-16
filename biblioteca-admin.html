@@ -86,6 +86,7 @@ textarea{resize:vertical;min-height:110px;line-height:1.5}
 .vacio .btn{margin-top:12px}
 .chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 10px;font-size:.8rem;font-weight:600;background:var(--papel);color:var(--pizarra)}
 .chip.borrador{background:#eceff0;color:#4b5759}
+.chip.pendiente{background:#fff2cc;color:#7a5800}
 .chip.publicado{background:#dff1e6;color:#1f6b40}
 .chip.revisar{background:#fbe3e0;color:#9d2c20}
 .chip.reto{background:#fff2cc;color:#7a5800}
@@ -917,6 +918,7 @@ async function cargarObras(ciclo, curso, forzar) {
   for (const d of q.docs) { if (d.estado === 'borrado') delete E.adm.obras[d.id]; else E.adm.obras[d.id] = d; }
   E.adm.alc.add(clave);
 }
+const NOM_EST = { borrador: 'Borrador', pendiente: 'Pendiente', publicado: 'Publicada' };
 const obrasDe = (ciclo, curso) => Object.values(E.adm.obras).filter(f => f.ciclo === ciclo && (!curso || f.curso === curso));
 
 /* Escrituras para dejar una obra «borrada» (lápida: así las cachés del alumnado se enteran) */
@@ -1000,7 +1002,9 @@ VISTAS.inicio = async main => {
   main.innerHTML = cargando();
   await cargarConfig(true).catch(() => {});
   let avis = 0; try { avis = (await consultar('lit_resenas', { donde: [['avisada', 'EQUAL', true]] })).docs.length; } catch {}
+  let pend = 0; try { pend = (await consultar('lit_relatos', { donde: [['estado', 'EQUAL', 'pendiente']] })).docs.length; } catch {}
   const T = [
+    ['pendientes', '⏳', 'Pendientes de revisión', pend ? pend + (pend === 1 ? ' obra espera' : ' obras esperan') + ' tu revisión para publicarse.' : 'Ninguna obra espera revisión.'],
     ['obras', '📚', 'Obras', 'Corregir, publicar, retirar o borrar. Libro en PDF.'],
     ['alumnado', '👥', 'Alumnado', 'Altas, bajas, grupos, claves y lo que ha subido cada uno.'],
     ['resenas', '💬', 'Reseñas avisadas', avis ? avis + (avis === 1 ? ' reseña espera' : ' reseñas esperan') + ' tu revisión.' : 'Ninguna pendiente.'],
@@ -1009,7 +1013,7 @@ VISTAS.inicio = async main => {
   ];
   if (E.yo.dueno) T.push(['admins', '🔑', 'Administradores', 'Añade o quita profesorado con acceso a esta app.']);
   main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:18px">Administración</h1>
-    <div class="panel">${T.map(([v, ic, t, d]) => `<button class="tarjeta ${v === 'resenas' && avis ? 'aviso-on' : ''}" data-ir="${v}"><span class="ic">${ic}</span><b>${t}</b><small>${d}</small></button>`).join('')}</div>`;
+    <div class="panel">${T.map(([v, ic, t, d]) => `<button class="tarjeta ${(v === 'resenas' && avis) || (v === 'pendientes' && pend) ? 'aviso-on' : ''}" data-ir="${v}"><span class="ic">${ic}</span><b>${t}</b><small>${d}</small></button>`).join('')}</div>`;
   $$('[data-ir]', main).forEach(b => b.addEventListener('click', () => ir(b.dataset.ir)));
 };
 
@@ -1017,13 +1021,13 @@ VISTAS.inicio = async main => {
    OBRAS
    ========================================================================= */
 VISTAS.obras = async (main, p) => {
-  const F = { ciclo: p.ciclo || E.ultCiclo || 0, curso: p.curso !== undefined ? p.curso : (E.ultCurso !== undefined ? E.ultCurso : cursoActual()), grupo: '', estado: '', q: '', orden: 'recientes' };
+  const F = { ciclo: p.ciclo || E.ultCiclo || 0, curso: p.curso !== undefined ? p.curso : (E.ultCurso !== undefined ? E.ultCurso : cursoActual()), grupo: '', estado: p.estado || '', q: '', orden: 'recientes' };
   main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:14px">Obras</h1>
     <div class="filtros">
       <div class="chips" id="o-ciclos">${CICLOS.map(c => `<button data-c="${c.n}" class="${F.ciclo === c.n ? 'on' : ''}">${c.nombre}</button>`).join('')}</div>
       <div class="orden">
         <label><span class="sr">Curso</span><select id="o-curso">${cursosPosibles().map(c => `<option value="${c}" ${F.curso === c ? 'selected' : ''}>${c === cursoActual() ? 'Este curso' : 'Curso ' + c}</option>`).join('')}<option value="" ${F.curso === '' ? 'selected' : ''}>Todos los cursos</option></select></label>
-        <label><span class="sr">Estado</span><select id="o-estado"><option value="">Publicadas y borradores</option><option value="publicado">Solo publicadas</option><option value="borrador">Solo borradores</option><option value="sincorregir">Sin corregir</option><option value="corregida">Corregidas</option></select></label>
+        <label><span class="sr">Estado</span><select id="o-estado"><option value="">Todas</option><option value="pendiente">Pendientes de revisión</option><option value="publicado">Solo publicadas</option><option value="borrador">Solo borradores</option><option value="sincorregir">Sin corregir</option><option value="corregida">Corregidas</option></select></label>
         <label><span class="sr">Orden</span><select id="o-orden"><option value="recientes">Más recientes</option><option value="valoradas">Mejor valoradas</option><option value="peores">Peor valoradas</option><option value="autor">Autor (A-Z)</option></select></label>
       </div>
       <div class="chips" id="o-grupos"></div>
@@ -1050,7 +1054,7 @@ VISTAS.obras = async (main, p) => {
     $('#o-lista').innerHTML = l.length ? `<div class="tabla-wrap"><table class="t-obras"><colgroup><col style="width:29%"><col style="width:19%"><col style="width:15%"><col style="width:8%"><col style="width:8%"><col style="width:21%"></colgroup><thead><tr><th>Título</th><th>Autor</th><th>Estado</th><th class="num">Nota</th><th class="num">Lecturas</th><th></th></tr></thead><tbody>${l.map(f => `<tr class="${f.corregida ? 'fila-corr' : ''}">
       <td><b>${esc(f.titulo)}</b><br><small style="color:var(--gris)">${esc(f.genero || '')}${f.curso ? ' · ' + esc(f.curso) : ''}</small></td>
       <td><a href="#" data-autor="${esc(f.autorUid)}">${esc(f.autorNombre)}</a><br><small style="color:var(--gris)">${esc(f.autorGrupo || '')}</small></td>
-      <td><span class="chip ${f.estado}">${f.estado === 'publicado' ? 'Publicada' : 'Borrador'}</span>${f.corregida ? '<br><span class="chip corregida" title="Corregida ' + esc(fecha(f.corregida)) + '">✓ Corregida</span>' : ''}</td>
+      <td><span class="chip ${f.estado}">${NOM_EST[f.estado] || f.estado}</span>${f.corregida ? '<br><span class="chip corregida" title="Corregida ' + esc(fecha(f.corregida)) + '">✓ Corregida</span>' : ''}</td>
       <td class="num">${nVotos(f) ? nfmt(media(f)) + ' (' + nVotos(f) + ')' : '—'}</td><td class="num">${nLecturas(f)}</td>
       <td style="white-space:nowrap"><button class="btn peq" data-corr="${esc(f.id)}">Corregir</button> <button class="btn peq sec" data-est="${esc(f.id)}">${f.estado === 'publicado' ? 'Retirar' : 'Publicar'}</button> <button class="btn peq txt" data-del="${esc(f.id)}" aria-label="Borrar">🗑️</button></td></tr>`).join('')}</tbody></table></div>`
       : '<div class="vacio"><p>No hay obras con estos filtros.</p></div>';
@@ -1115,7 +1119,7 @@ VISTAS.corregir = async (main, p) => {
     <label class="campo"><span>Título</span><input type="text" id="c-tit" class="titulo-in" maxlength="100" value="${esc(f.titulo)}"></label>
     <div class="grid2">
       <label class="campo"><span>Tipo de texto</span><select id="c-gen">${GENEROS.map(g => `<option ${g === f.genero ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
-      <label class="campo"><span>Estado</span><select id="c-est"><option value="publicado" ${f.estado === 'publicado' ? 'selected' : ''}>Publicada</option><option value="borrador" ${f.estado !== 'publicado' ? 'selected' : ''}>Borrador</option></select></label>
+      <label class="campo"><span>Estado</span><select id="c-est"><option value="pendiente" ${f.estado === 'pendiente' ? 'selected' : ''}>Pendiente de revisión</option><option value="publicado" ${f.estado === 'publicado' ? 'selected' : ''}>Publicada</option><option value="borrador" ${f.estado === 'borrador' ? 'selected' : ''}>Borrador</option></select></label>
     </div>
     <div class="toolbar" id="tb" role="toolbar" aria-label="Formato del texto">
       <button class="tb" data-c="bold" title="Negrita"><b>N</b></button><button class="tb" data-c="italic" title="Cursiva"><i style="font-family:Georgia">K</i></button><button class="tb" data-c="underline" title="Subrayado"><u>S</u></button>
@@ -1130,7 +1134,7 @@ VISTAS.corregir = async (main, p) => {
     </div>
     <div class="hoja-editor" id="ed" contenteditable="true" spellcheck="true" lang="es"></div>
     <div class="editor-pie"><span id="c-cuenta">0 palabras</span></div>
-    <div class="botonera"><button class="btn amar" id="c-guardar">Guardar corrección</button></div>
+    <div class="botonera">${f.estado === 'publicado' ? '' : '<button class="btn amar" id="c-publicar">Guardar y publicar</button>'}<button class="btn ${f.estado === 'publicado' ? 'amar' : 'sec'}" id="c-guardar">Guardar corrección</button></div>
     <section class="seccion"><h2>💬 Reseñas de esta obra (${reseñas.length})</h2><div id="c-res"></div></section>
   </div>`;
   const ed = $('#ed'); ed.innerHTML = limpiarHTML(t ? t.html : '') || '<p><br></p>';
@@ -1175,6 +1179,7 @@ VISTAS.corregir = async (main, p) => {
   pintarMarca();
   let html1 = html0; const hc = () => ed.innerHTML !== html1 || JSON.stringify([$('#c-tit').value, $('#c-gen').value, $('#c-est').value]) !== meta0;
   $('#c-guardar').onclick = async () => { if (await guardar()) { html1 = ed.innerHTML; tostada('Corrección guardada', 'ok'); } };
+  $('#c-publicar') && ($('#c-publicar').onclick = async () => { $('#c-est').value = 'publicado'; if (await guardar()) { html1 = ed.innerHTML; guardaSalida = null; tostada('Obra corregida y publicada', 'ok'); atras(); } });
   guardaSalida = async () => {
     if (!hc()) return true;
     const r = await modal({ titulo: 'Tienes cambios sin guardar', icono: '💾', html: '<p>Si sales ahora, la corrección se pierde.</p>', botones: [{ t: 'Seguir corrigiendo', v: 'seguir', c: 'sec' }, { t: 'Salir sin guardar', v: 'salir', c: 'sec' }, { t: 'Guardar y salir', v: 'guardar' }] });
@@ -1432,7 +1437,7 @@ VISTAS.alumno = async (main, p) => {
       <div class="cifra"><b>${pub.length}</b><span>obras publicadas</span></div><div class="cifra"><b>${obras.length - pub.length}</b><span>borradores</span></div>
       <div class="cifra"><b>${pub.reduce((a, f) => a + (f.palabras || 0), 0)}</b><span>palabras</span></div><div class="cifra"><b>${votos.length ? nfmt(votos.reduce((a, b) => a + b, 0) / votos.length) : '—'}</b><span>nota media</span></div>
       <div class="cifra"><b>${resenas.length}</b><span>reseñas escritas</span></div></div>
-    <section class="seccion"><h2>📚 Obras</h2>${obras.length ? `<div class="tabla-wrap"><table><thead><tr><th>Título</th><th>Curso</th><th>Estado</th><th class="num">Nota</th><th class="num">Lecturas</th><th></th></tr></thead><tbody>${obras.map(f => `<tr><td><b>${esc(f.titulo)}</b><br><small style="color:var(--gris)">${esc(f.genero || '')} · ${f.palabras || 0} palabras</small></td><td>${esc(f.curso || '')}</td><td><span class="chip ${f.estado}">${f.estado === 'publicado' ? 'Publicada' : 'Borrador'}</span>${f.corregida ? ' <span class="chip corregida">✓ Corregida</span>' : ''}</td><td class="num">${nVotos(f) ? nfmt(media(f)) + ' (' + nVotos(f) + ')' : '—'}</td><td class="num">${nLecturas(f)}</td><td><button class="btn peq" data-corr="${esc(f.id)}">Corregir</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="vacio"><p>Todavía no ha subido nada.</p></div>'}</section>
+    <section class="seccion"><h2>📚 Obras</h2>${obras.length ? `<div class="tabla-wrap"><table><thead><tr><th>Título</th><th>Curso</th><th>Estado</th><th class="num">Nota</th><th class="num">Lecturas</th><th></th></tr></thead><tbody>${obras.map(f => `<tr><td><b>${esc(f.titulo)}</b><br><small style="color:var(--gris)">${esc(f.genero || '')} · ${f.palabras || 0} palabras</small></td><td>${esc(f.curso || '')}</td><td><span class="chip ${f.estado}">${NOM_EST[f.estado] || f.estado}</span>${f.corregida ? ' <span class="chip corregida">✓ Corregida</span>' : ''}</td><td class="num">${nVotos(f) ? nfmt(media(f)) + ' (' + nVotos(f) + ')' : '—'}</td><td class="num">${nLecturas(f)}</td><td><button class="btn peq" data-corr="${esc(f.id)}">Corregir</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="vacio"><p>Todavía no ha subido nada.</p></div>'}</section>
     <section class="seccion"><h2>💬 Reseñas que ha escrito</h2>${resenas.length ? `<div class="resenas">${resenas.map(r => `<article class="resena ${r.avisada ? 'avisada' : ''}"><p><b>${r.estrellas ? htmlEstrellas(r.estrellas) : ''}</b> ${esc(r.texto)}</p><small style="color:var(--gris)">${fecha(r.fecha)}</small></article>`).join('')}</div>` : '<div class="vacio"><p>Aún no ha escrito reseñas.</p></div>'}</section>`;
   $$('[data-corr]', main).forEach(b => b.onclick = () => ir('corregir', { id: b.dataset.corr }));
   $('#v-ver') && ($('#v-ver').onclick = () => { const c = $('#v-cl'), ver = c.textContent.includes('•'); c.textContent = ver ? uDoc.clave : '••••••'; $('#v-ver').textContent = ver ? 'Ocultar' : 'Mostrar'; });
@@ -1461,6 +1466,53 @@ VISTAS.resenas = async main => {
       l = l.filter(x => x !== r); pinta();
     } catch (er) { avisar('No se ha podido hacer', mensajeError(er), '⚠️'); }
   };
+};
+
+/* =========================================================================
+   PENDIENTES DE REVISIÓN (todas las obras enviadas por el alumnado)
+   ========================================================================= */
+VISTAS.pendientes = async main => {
+  main.innerHTML = cargando('Buscando obras pendientes…');
+  let l;
+  try { l = (await consultar('lit_relatos', { donde: [['estado', 'EQUAL', 'pendiente']] })).docs; }
+  catch (e) { main.innerHTML = `<div class="vacio"><p>${mensajeError(e)}</p></div>`; return; }
+  l.forEach(f => { E.adm.obras[f.id] = f; });
+  l.sort((a, b) => (a.creado || 0) - (b.creado || 0));
+  let g = E.ultGrupoPend || '';
+  const pinta = () => {
+    const gs = [...new Set(l.map(f => f.autorGrupo).filter(Boolean))].sort(comparaTexto); if (g && !gs.includes(g)) g = '';
+    E.ultGrupoPend = g;
+    const lv = l.filter(f => !g || f.autorGrupo === g);
+    main.innerHTML = `<h1 style="font-size:2rem;margin-bottom:4px">Pendientes de revisión</h1>
+      <p style="margin:0 0 16px;color:var(--gris);max-width:62ch">Obras que el alumnado ha enviado. Hasta que las publiques solo las ven sus autores y tú. Las más antiguas, primero.</p>
+      ${gs.length > 1 ? `<div class="chips" id="p-grupos" style="margin-bottom:14px"><button data-g="" class="${!g ? 'on' : ''}">Todos</button>${gs.map(x => `<button data-g="${esc(x)}" class="${g === x ? 'on' : ''}">${esc(x)}</button>`).join('')}</div>` : ''}
+      ${lv.length ? `<div class="tabla-wrap"><table class="t-obras"><thead><tr><th>Título</th><th>Autor</th><th>Grupo</th><th class="num">Palabras</th><th></th></tr></thead><tbody>${lv.map(f => `<tr><td><b>${esc(f.titulo)}</b><br><small style="color:var(--gris)">${esc(f.genero || '')}</small></td><td>${esc(f.autorNombre)}</td><td>${esc(f.autorGrupo || '')}</td><td class="num">${f.palabras || 0}</td><td><button class="btn peq" data-corr="${esc(f.id)}">Corregir</button> <button class="btn peq sec" data-pub="${esc(f.id)}" title="Publicar sin cambiar nada">Publicar</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="vacio"><p>No hay obras esperando revisión. 🎉</p></div>'}
+      <div class="fila" style="margin-top:22px"><button class="btn peq sec" id="p-devolver" title="Para las obras que ya estaban publicadas antes de este cambio">↩ Devolver a revisión las publicadas sin corregir</button></div>`;
+    $$('#p-grupos button', main).forEach(b => b.onclick = () => { g = b.dataset.g; pinta(); });
+    $$('[data-corr]', main).forEach(b => b.onclick = () => ir('corregir', { id: b.dataset.corr }));
+    $$('[data-pub]', main).forEach(b => b.onclick = async () => {
+      const f = l.find(x => x.id === b.dataset.pub); if (!f) return;
+      try {
+        const d = { estado: 'publicado', publicado: f.publicado || ahora(), corregida: ahora() };
+        await confirmar([W.cambiar('lit_relatos/' + f.id, d, ['estado', 'publicado', 'corregida'], { act: true }), W.cambiar('lit_textos/' + f.id, { estado: 'publicado' }, ['estado'])]);
+        Object.assign(f, d, { publicado: f.publicado || ahora() }); l = l.filter(x => x !== f); tostada('Obra publicada', 'ok'); pinta();
+      } catch (er) { avisar('No se ha podido publicar', mensajeError(er), '⚠️'); }
+    });
+    $('#p-devolver').onclick = async () => {
+      try {
+        const pubs = (await consultar('lit_relatos', { donde: [['estado', 'EQUAL', 'publicado']] })).docs.filter(f => !f.corregida);
+        if (!pubs.length) return avisar('Nada que devolver', 'Todas las obras publicadas están corregidas.', '✓');
+        if (!(await preguntar('¿Devolver a revisión?', `${pubs.length} ${pubs.length === 1 ? 'obra publicada sin corregir dejará' : 'obras publicadas sin corregir dejarán'} de verse en la biblioteca hasta que las revises. Sus votos y reseñas se conservan.`, 'Devolver'))) return;
+        for (let i = 0; i < pubs.length; i += 100) {
+          const ws = []; pubs.slice(i, i + 100).forEach(f => { ws.push(W.cambiar('lit_relatos/' + f.id, { estado: 'pendiente' }, ['estado'], { act: true })); ws.push(W.cambiar('lit_textos/' + f.id, { estado: 'pendiente' }, ['estado'])); });
+          await confirmar(ws);
+        }
+        pubs.forEach(f => { f.estado = 'pendiente'; E.adm.obras[f.id] = f; l.push(f); });
+        l.sort((a, b) => (a.creado || 0) - (b.creado || 0)); tostada('Obras devueltas a revisión', 'ok'); pinta();
+      } catch (er) { avisar('No se ha podido hacer', mensajeError(er), '⚠️'); }
+    };
+  };
+  pinta();
 };
 
 /* =========================================================================
